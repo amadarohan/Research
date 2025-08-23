@@ -1,0 +1,166 @@
+System Design for: 'Web Search Engine'
+
+This document outlines the architectural design for a scalable web search engine, capable of crawling the web, indexing documents, and serving relevant search results to users. The design emphasizes a modular approach to handle the massive scale of web data and search queries.
+
+### C4 Model Diagrams
+
+#### 1\. System Context Diagram
+
+The System Context diagram provides a high-level view of the Search Engine system and its interactions with external users and systems. It shows the Search Engine as a central system, interacting with web users and external web servers.
+
+**Description:**
+
+  * **User:** A person who submits a query to the search engine and expects relevant search results.
+  * **Web Server:** An external system that hosts web pages and serves them to the web crawler.
+  * **Web Search Engine (System in Scope):** The core system that discovers, indexes, and ranks web content.
+  * **Advertiser (Optional):** A business that provides paid advertisements to be displayed alongside search results.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Context
+    title System Context Diagram for Web Search Engine
+
+    Person(user, "User", "A person searching the web.")
+    System_Ext(web_server, "Web Server", "Hosts web pages and serves content.")
+    System_Ext(advertiser, "Advertiser", "Provides paid search advertisements.")
+
+    System(search_engine, "Web Search Engine", "The core system for crawling, indexing, and serving search results.")
+
+    Rel(user, search_engine, "Submits queries to")
+    Rel(search_engine, web_server, "Crawls/fetches content from")
+    Rel(search_engine, advertiser, "Displays ads from")
+```
+
+#### 2\. Container Diagram
+
+This diagram zooms into the Web Search Engine system, showing the major containers (independently deployable components). The design is based on a distributed system architecture to handle the scale.
+
+**Description:**
+
+  * **Web Crawler:** A distributed component that fetches web pages from various web servers. It follows links, manages a queue of URLs to visit, and is designed to handle network I/O efficiently.
+  * **Ingestion Pipeline:** A container that takes raw web page content from the crawler, cleans it, extracts relevant data, and sends it to the Indexer.
+  * **Indexer:** A core component that processes cleaned documents and builds an inverted index, mapping terms to documents. It is highly scalable and distributed.
+  * **Search Frontend (API/Web Server):** The entry point for user queries. It receives requests, communicates with the Query Processor, and renders the search results.
+  * **Query Processor:** A container that takes a user query, parses it, consults the inverted index, and orchestrates the retrieval of relevant documents.
+  * **Ranker:** A container that scores the retrieved documents based on relevance and other factors (e.g., PageRank, freshness) to order them for display.
+  * **Document Store:** A database that stores the raw or processed documents. It's used to retrieve snippets and other metadata for the final search results page.
+  * **Inverted Index (Data Store):** The primary data structure for the search engine. It's a massive, distributed data store that maps every word to a list of documents containing that word.
+  * **URL Queue:** A message queue or a distributed list that stores the URLs to be crawled. This decouples the Crawler from the Ingestion Pipeline.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Container
+    title Container Diagram for Web Search Engine
+
+    Person(user, "User")
+    System_Ext(web_server, "Web Server")
+
+    System_Boundary(search_engine_boundary, "Web Search Engine") {
+        Container(crawler, "Web Crawler", "Java/Go Distributed System", "Fetches web pages from the internet.")
+        Container(ingestion_pipeline, "Ingestion Pipeline", "Python/Apache Spark", "Cleans and processes raw web pages.")
+        Container(indexer, "Indexer", "C++", "Builds and updates the inverted index.")
+        Container(search_frontend, "Search Frontend", "Node.js/Nginx", "Serves the user interface and API.")
+        Container(query_processor, "Query Processor", "Java/C++", "Handles query parsing and retrieves documents.")
+        Container(ranker, "Ranker", "Python/TensorFlow", "Scores and orders search results.")
+
+        ContainerDb(doc_store, "Document Store", "Cassandra/Hadoop HDFS", "Stores raw and processed web pages.")
+        ContainerDb(inverted_index, "Inverted Index", "Custom Data Structure", "Maps terms to documents for fast lookup.")
+        ContainerDb(url_queue, "URL Queue", "RabbitMQ/Kafka", "Stores URLs to be crawled.")
+    }
+
+    Rel(user, search_frontend, "Submits query to", "HTTPS")
+    Rel(search_frontend, query_processor, "Sends query to")
+    Rel(query_processor, inverted_index, "Looks up terms in")
+    Rel(query_processor, doc_store, "Fetches document metadata from")
+    Rel(query_processor, ranker, "Passes documents for ranking")
+    Rel(ranker, search_frontend, "Returns ranked results to")
+
+    Rel(crawler, url_queue, "Pushes new URLs to crawl")
+    Rel(crawler, web_server, "Fetches pages from", "HTTPS")
+    Rel(crawler, ingestion_pipeline, "Sends raw content to")
+    Rel(ingestion_pipeline, doc_store, "Writes processed documents to")
+    Rel(ingestion_pipeline, indexer, "Sends documents to be indexed")
+    Rel(indexer, inverted_index, "Writes index data to")
+```
+
+#### 3\. Component Diagram (Query Processor)
+
+This diagram focuses on the internal components of the **Query Processor** container, illustrating how it handles a user query.
+
+**Description:**
+
+  * **API Controller:** The entry point for the Query Processor. It receives user queries from the Search Frontend.
+  * **Query Parser:** A component that takes the raw query string and breaks it down into a structured representation (e.g., tokens, boolean operators).
+  * **Inverted Index Client:** A component that communicates with the Inverted Index data store to retrieve document IDs for the parsed query terms.
+  * **Document Store Client:** A component that fetches snippets and titles from the Document Store using the retrieved document IDs.
+  * **Ranker Client:** A component that sends the retrieved documents to the Ranker for scoring.
+  * **Results Aggregator:** A component that combines the ranked results from the Ranker with metadata from the Document Store to form the final result set to be sent back to the Search Frontend.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Component
+    title Component Diagram for Query Processor
+
+    Container(search_frontend, "Search Frontend", "API")
+    Container_Ext(inverted_index, "Inverted Index", "Custom Distributed DB")
+    Container_Ext(doc_store, "Document Store", "Cassandra/HDFS")
+    Container_Ext(ranker, "Ranker", "TensorFlow")
+
+    Container_Boundary(query_processor, "Query Processor") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives user queries.")
+        Component(query_parser, "Query Parser", "Lexer/Parser", "Analyzes and processes the query string.")
+        Component(inverted_index_client, "Inverted Index Client", "RPC Client", "Queries the Inverted Index for document IDs.")
+        Component(doc_store_client, "Document Store Client", "HDFS/Cassandra Client", "Fetches document metadata.")
+        Component(ranker_client, "Ranker Client", "gRPC Client", "Sends documents to the Ranker service.")
+        Component(results_aggregator, "Results Aggregator", "Logic Component", "Combines ranked results with document snippets.")
+    }
+
+    Rel(search_frontend, api_controller, "Sends query to", "HTTPS")
+    Rel(api_controller, query_parser, "Passes query to")
+    Rel(query_parser, inverted_index_client, "Queries for term IDs based on parsed query")
+    Rel(inverted_index_client, inverted_index, "Retrieves document IDs from")
+    Rel(inverted_index_client, doc_store_client, "Sends document IDs to")
+    Rel(doc_store_client, doc_store, "Retrieves document snippets and titles from")
+    Rel(doc_store_client, ranker_client, "Passes document data to")
+    Rel(ranker_client, ranker, "Requests document ranking from")
+    Rel(ranker_client, results_aggregator, "Returns ranked documents to")
+    Rel(results_aggregator, api_controller, "Sends final result set to")
+```
+
+### Architecture Decision Record
+
+#### ADR 1: Use a Distributed, Polyglot Persistence Approach for Data Storage
+
+**Status:** Proposed
+
+**Context:**
+A web search engine must handle a massive scale of data, including billions of documents, trillions of terms, and a high volume of concurrent search queries. A single monolithic database is not suitable for this scale, as it would become a severe bottleneck for both reads (search queries) and writes (indexing new content). The data has varying characteristics; some parts need high-speed random access, while others are sequential and massive.
+
+**Decision:**
+We will adopt a polyglot persistence strategy, using multiple data stores tailored to the specific needs of each system component. The primary data stores will be:
+
+1.  **A custom-built, distributed Inverted Index:** Optimized for extremely fast read lookups of document IDs based on terms.
+2.  **A distributed file system or document store (e.g., Apache Cassandra or Hadoop HDFS):** For storing the raw and processed web documents, which are large and sequentially written by the crawler.
+3.  **A message queue (e.g., Apache Kafka):** To decouple components and handle the high-volume, asynchronous flow of URLs and new documents.
+
+**Consequences:**
+
+  * **Positive:**
+
+      * **Performance:** Each data store is selected for its specific purpose, leading to optimal performance for both indexing (writes) and searching (reads). The Inverted Index provides sub-second query lookup times, while the Document Store efficiently handles large file writes.
+      * **Scalability:** The distributed nature of the chosen technologies allows each data store to be scaled independently by adding more nodes, ensuring the system can grow with the web.
+      * **Resilience:** The failure of one data store (e.g., a node in the Document Store) does not necessarily affect the entire system, as it can be designed with redundancy.
+
+  * **Negative:**
+
+      * **Increased Complexity:** Managing multiple, distributed data stores significantly increases operational complexity. This includes data synchronization, consistency, backups, and monitoring.
+      * **Development Overhead:** Requires specialized knowledge to develop and manage these complex data structures and distributed systems.
+      * **Data Consistency Challenges:** Maintaining strong consistency across all data stores can be difficult. The system will likely operate with an eventual consistency model for fresh data, where newly crawled pages might not be immediately searchable.
+
+**Alternatives Considered:**
+
+  * **Single Relational Database (e.g., MySQL or PostgreSQL):** Rejected due to fundamental limitations. A relational database would struggle with the sheer volume of data, especially for a key-value structure like the inverted index, and would be a single point of failure and a significant scalability bottleneck.
+  * **General-Purpose NoSQL Database (e.g., MongoDB):** While more scalable than a relational database, a general-purpose NoSQL solution is not optimized for the specific access patterns of an inverted index (high-volume, highly concurrent lookups on a massive key-value structure). A custom-built or purpose-built solution is far more performant for the core search function.
