@@ -1,0 +1,162 @@
+System Design for: 'Notification Service'
+
+This document outlines the architectural design for a scalable, reliable, and high-throughput Notification Service. The system is designed to handle a massive volume of asynchronous notifications across multiple channels, such as email, SMS, and push notifications, ensuring delivery with minimal latency and high availability.
+
+### C4 Model Diagrams
+
+#### 1\. System Context Diagram
+
+The System Context diagram provides a high-level view of the Notification Service and its interactions with external users and systems. It shows the core service interacting with client applications, various third-party delivery providers, and administrators.
+
+**Description:**
+
+  * **Client Application (Internal System):** An internal application (e.g., an e-commerce platform, a social media app) that needs to send notifications to its users. It is the primary consumer of the Notification Service.
+  * **Notification Service (System in Scope):** The central system responsible for receiving notification requests and routing them to the correct delivery channel.
+  * **User:** The end recipient of the notification (e.g., a customer receiving an order confirmation, a user receiving a social media mention).
+  * **Third-Party Providers:** External services like an Email Service Provider (ESP), a Push Notification Service (e.g., FCM/APNS), or an SMS Gateway. The Notification Service delegates the final delivery to these providers.
+  * **Administrator:** A person who manages the service, configures delivery channels, and monitors system health.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Context
+    title System Context Diagram for Notification Service
+
+    System(client_app, "Client Application", "An internal system that needs to send notifications.")
+    System_Ext(user, "User", "The recipient of the notification.")
+    System_Ext(third_party_providers, "Third-Party Providers", "Email, SMS, and Push notification services.")
+    Person(administrator, "Administrator", "Manages and monitors the service.")
+
+    System(notification_service, "Notification Service", "The core system for sending notifications.")
+
+    Rel(client_app, notification_service, "Sends notification requests to")
+    Rel(notification_service, third_party_providers, "Sends notifications for delivery to")
+    Rel(third_party_providers, user, "Delivers notifications to")
+    Rel(administrator, notification_service, "Manages and monitors")
+```
+
+-----
+
+#### 2\. Container Diagram
+
+This diagram zooms into the Notification Service system, showing the major containers. The design is based on a microservices architecture to handle different notification types and ensure resilience.
+
+**Description:**
+
+  * **API Gateway:** The single entry point for all client applications. It handles authentication, rate limiting, and routes requests to the Ingestion Service.
+  * **Ingestion Service:** A high-throughput, stateless container that receives notification requests from the API Gateway. It validates the requests and pushes them to a message queue for asynchronous processing.
+  * **Processing Service:** A group of worker containers that pull messages from the queue. It is responsible for formatting the notification content, applying templates, and determining the appropriate delivery channel.
+  * **Email Sender:** A specialized worker that sends formatted email notifications to a third-party Email Service Provider.
+  * **SMS Sender:** A specialized worker that sends formatted SMS notifications to a third-party SMS Gateway.
+  * **Push Notification Sender:** A specialized worker that sends push notifications to third-party services like FCM (Firebase Cloud Messaging) or APNS (Apple Push Notification Service).
+  * **Message Queue:** A distributed message broker (e.g., Apache Kafka, RabbitMQ) that decouples the ingestion process from the delivery process. It buffers notification requests and ensures reliable delivery even under heavy load.
+  * **Configuration Store:** A database that stores templates, rules, and provider credentials for each notification type.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Container
+    title Container Diagram for Notification Service
+
+    System_Ext(client_app, "Client Application")
+    System_Ext(email_provider, "Email Service Provider")
+    System_Ext(sms_gateway, "SMS Gateway")
+    System_Ext(push_service, "Push Notification Service")
+    
+    System_Boundary(notification_service_boundary, "Notification Service") {
+        Container(api_gateway, "API Gateway", "Go/NGINX", "Entry point for all requests.")
+        Container(ingestion_service, "Ingestion Service", "Java/Spring Boot", "Ingests and validates notification requests.")
+        Container(processing_service, "Processing Service", "Node.js Workers", "Processes and formats notifications.")
+        Container(email_sender, "Email Sender", "Python Worker", "Sends emails to provider.")
+        Container(sms_sender, "SMS Sender", "Python Worker", "Sends SMS to gateway.")
+        Container(push_sender, "Push Notification Sender", "Go Worker", "Sends push notifications to provider.")
+        
+        Container_Ext(message_queue, "Message Queue", "RabbitMQ/Kafka", "Buffers notification requests.")
+        ContainerDb(config_db, "Configuration Store", "PostgreSQL/DynamoDB", "Stores templates and provider configs.")
+    }
+    
+    Rel(client_app, api_gateway, "Sends notification request to", "HTTPS")
+    Rel(api_gateway, ingestion_service, "Routes request to")
+    Rel(ingestion_service, message_queue, "Publishes notification message to")
+    Rel(processing_service, message_queue, "Consumes messages from")
+    Rel(processing_service, config_db, "Reads notification templates from")
+    Rel(processing_service, email_sender, "Passes email messages to")
+    Rel(processing_service, sms_sender, "Passes SMS messages to")
+    Rel(processing_service, push_sender, "Passes push messages to")
+    Rel(email_sender, email_provider, "Sends email via", "SMTP")
+    Rel(sms_sender, sms_gateway, "Sends SMS via", "API/Protocol")
+    Rel(push_sender, push_service, "Sends push notification via", "API")
+```
+
+-----
+
+#### 3\. Component Diagram (Ingestion Service)
+
+This diagram focuses on the internal components of the **Ingestion Service** container, illustrating how it handles an incoming notification request.
+
+**Description:**
+
+  * **API Controller:** The entry point for the Ingestion Service. It receives the notification request from the API Gateway.
+  * **Request Validator:** A component that checks the incoming payload for correctness and completeness (e.g., required fields, valid user IDs).
+  * **Rate Limiter:** A component that enforces rate limits per client application to prevent abuse and protect the system.
+  * **Request Mapper:** A component that transforms the incoming request into a standardized internal notification message format.
+  * **Message Producer:** A component that publishes the formatted notification message to the message queue. It handles serialization and communication with the queueing system.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Component
+    title Component Diagram for Ingestion Service
+
+    Container(api_gateway, "API Gateway", "Go/NGINX")
+    Container_Ext(message_queue, "Message Queue", "RabbitMQ/Kafka")
+
+    Container_Boundary(ingestion_service, "Ingestion Service") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives incoming requests.")
+        Component(request_validator, "Request Validator", "Business Logic", "Validates payload and required fields.")
+        Component(rate_limiter, "Rate Limiter", "Redis Client", "Enforces rate limits per client.")
+        Component(request_mapper, "Request Mapper", "Data Transformation", "Transforms request to internal message format.")
+        Component(message_producer, "Message Producer", "Kafka Client", "Publishes message to the queue.")
+    }
+    
+    Rel(api_gateway, api_controller, "Sends request to", "HTTPS")
+    Rel(api_controller, rate_limiter, "Checks rate limits with")
+    Rel(api_controller, request_validator, "Passes payload for validation")
+    Rel(request_validator, request_mapper, "Sends validated data to be mapped")
+    Rel(request_mapper, message_producer, "Passes formatted message to be published")
+    Rel(message_producer, message_queue, "Publishes message to")
+```
+
+-----
+
+### Architecture Decision Record
+
+#### ADR 1: Use an Asynchronous, Queue-Based Architecture for Decoupling
+
+**Status:** Proposed
+
+**Context:**
+A notification service must handle a high volume of requests, and the delivery process can be slow or unreliable due to network latency, third-party provider downtime, or rate limits. A synchronous, direct-call architecture would block the client application and cause cascading failures if a downstream provider is slow or fails. This would lead to poor user experience and system instability.
+
+**Decision:**
+We will implement an **asynchronous, queue-based architecture**. The Ingestion Service will not directly call the delivery services (e.g., Email Sender, SMS Sender). Instead, it will publish notification requests as messages to a durable message queue (e.g., Kafka). A separate set of worker services will asynchronously consume messages from this queue and handle the actual delivery.
+
+**Consequences:**
+
+  * **Positive:**
+
+      * **Decoupling:** The client application is fully decoupled from the delivery mechanism. It can send a notification request and immediately get a response without waiting for the delivery to complete.
+      * **Resilience:** The message queue acts as a buffer. If a third-party provider or a worker service goes down, messages are safely stored in the queue and can be processed once the service recovers, preventing data loss.
+      * **Scalability:** The ingestion and delivery processes can be scaled independently. We can add more ingestion service instances to handle a spike in requests and more worker instances to increase delivery throughput.
+      * **Load Balancing:** The message queue automatically distributes the workload among available worker services, ensuring efficient resource utilization.
+
+  * **Negative:**
+
+      * **Increased Latency:** A message queue introduces a small amount of latency between the ingestion and delivery of a notification. This is an acceptable trade-off for the reliability and scalability benefits.
+      * **Operational Complexity:** Managing and monitoring a distributed message queue adds operational overhead. We need to ensure the queue is highly available and durable.
+      * **Debugging Challenges:** Tracing a notification from the client application through the queue to the final delivery can be more complex than in a synchronous system.
+
+**Alternatives Considered:**
+
+  * **Synchronous, Direct-Call Architecture:** The Ingestion Service would directly call the delivery services. This would be simpler to implement initially and would have lower latency for a single notification. However, it would be highly susceptible to failure. A slow or unavailable third-party provider would cause the entire system to backlog and fail. This was rejected because the system must be resilient and highly available.
+  * **Synchronous with Fallbacks:** A more advanced version of the synchronous model where a failed delivery attempt triggers a retry or a fallback mechanism. While this improves reliability, it still keeps the client application blocked and does not provide the same level of decoupling and scalability as a message queue. The message queue handles retries and distribution more elegantly and reliably at scale.
