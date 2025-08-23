@@ -1,0 +1,182 @@
+System Design for: 'Scalable Online Shop'
+
+This document outlines the architectural design for a scalable online shop, focusing on a microservices-based approach to ensure high availability, resilience, and independent scaling of different business capabilities.
+
+### C4 Model Diagrams
+
+#### 1\. System Context Diagram
+
+The System Context diagram provides a high-level view of the Online Shop system and its interactions with external users and systems. It shows the Online Shop as a central system, interacting with customers, administrators, and third-party services like payment gateways and shipping providers.
+
+**Description:**
+
+  * **Customer:** A user who browses products, adds them to a cart, and makes a purchase. They interact directly with the Online Shop.
+  * **Administrator:** A user who manages products, orders, and customer data. They interact with the system's administrative interface.
+  * **Online Shop (System in Scope):** The main system that manages all e-commerce business logic.
+  * **Payment Gateway:** An external system that securely processes credit card and other payments. The Online Shop sends payment requests to this gateway.
+  * **Shipping Provider:** An external system that handles logistics, tracking, and delivery of orders. The Online Shop sends order details to this provider for fulfillment.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Context
+    title System Context Diagram for Online Shop
+
+    Person(customer, "Customer", "A user who browses and purchases products.")
+    Person(administrator, "Administrator", "Manages the shop's catalog and orders.")
+
+    System(online_shop, "Online Shop", "The core e-commerce platform.")
+
+    System_Ext(payment_gateway, "Payment Gateway", "Third-party service for processing payments.")
+    System_Ext(shipping_provider, "Shipping Provider", "External service for order fulfillment and tracking.")
+
+    Rel(customer, online_shop, "Uses")
+    Rel(administrator, online_shop, "Manages through")
+    Rel(online_shop, payment_gateway, "Processes payments via")
+    Rel(online_shop, shipping_provider, "Sends order details to")
+```
+
+#### 2\. Container Diagram
+
+This diagram zooms into the Online Shop system, showing the major containers (independently deployable components). The design is based on a microservices architecture, with each container representing a specific business domain.
+
+**Description:**
+
+  * **Web Application (Frontend):** A single-page application (SPA) or a server-rendered application that customers and administrators use to interact with the system. It communicates with the API Gateway.
+  * **API Gateway:** The single entry point for all external clients. It routes requests to the appropriate microservices, handles authentication, and provides a facade over the internal services.
+  * **User Service:** A microservice responsible for user authentication and management (profiles, addresses, etc.). It has its own database.
+  * **Product Catalog Service:** A microservice that manages product information, including descriptions, images, and categories. It is backed by a database optimized for searching.
+  * **Cart Service:** A microservice dedicated to managing customer shopping carts. It stores temporary cart data in a fast, in-memory cache or database.
+  * **Order Service:** The core microservice that handles the checkout and order placement process. It orchestrates communication with other services (e.g., Payment and Inventory). It has its own relational database to ensure transactional integrity.
+  * **Payment Service:** A microservice that handles payment-related logic and communicates with the external Payment Gateway. It stores transaction logs in a dedicated database.
+  * **Inventory Service:** A microservice that tracks product stock levels and manages inventory updates. It uses a database designed for high-concurrency read/write operations.
+  * **Database (Polyglot Persistence):** Each microservice has its own dedicated database, chosen based on the specific needs of the service (e.g., a relational database for Orders, a document database for the Product Catalog, and a key-value store for the Cart).
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Container
+    title Container Diagram for Online Shop
+
+    Person(customer, "Customer")
+    System_Ext(payment_gateway, "Payment Gateway")
+    System_Ext(shipping_provider, "Shipping Provider")
+
+    System_Boundary(online_shop_boundary, "Online Shop") {
+        Container(web_app, "Web Application", "React/Vue.js SPA", "Provides a user interface for customers and administrators.")
+        Container(api_gateway, "API Gateway", "Node.js / Go", "Routes requests to microservices, handles auth.")
+
+        Container(user_service, "User Service", "Spring Boot / .NET", "Manages user profiles and authentication.")
+        Container(catalog_service, "Product Catalog Service", "Python/Django", "Manages product data and search functionality.")
+        Container(cart_service, "Cart Service", "Node.js", "Manages customer shopping carts.")
+        Container(order_service, "Order Service", "Spring Boot / .NET", "Handles order creation and processing.")
+        Container(payment_service, "Payment Service", "Go", "Handles payment transactions.")
+        Container(inventory_service, "Inventory Service", "Java", "Tracks product stock levels.")
+        
+        ContainerDb(user_db, "User DB", "PostgreSQL", "Stores user account information.")
+        ContainerDb(catalog_db, "Product Catalog DB", "Elasticsearch", "Stores product data for fast search.")
+        ContainerDb(cart_db, "Cart DB", "Redis", "Stores temporary shopping cart data.")
+        ContainerDb(order_db, "Order DB", "PostgreSQL", "Stores order and transaction history.")
+        ContainerDb(payment_db, "Payment DB", "MySQL", "Stores payment transaction logs.")
+        ContainerDb(inventory_db, "Inventory DB", "CockroachDB", "Stores product stock levels.")
+    }
+
+    Rel(customer, web_app, "Uses")
+    Rel(web_app, api_gateway, "Requests data from", "HTTPS")
+
+    Rel(api_gateway, user_service, "Routes API calls to")
+    Rel(api_gateway, catalog_service, "Routes API calls to")
+    Rel(api_gateway, cart_service, "Routes API calls to")
+    Rel(api_gateway, order_service, "Routes API calls to")
+    Rel(api_gateway, payment_service, "Routes API calls to")
+    Rel(api_gateway, inventory_service, "Routes API calls to")
+
+    Rel(user_service, user_db, "Reads/writes to")
+    Rel(catalog_service, catalog_db, "Reads/writes to")
+    Rel(cart_service, cart_db, "Reads/writes to")
+    Rel(order_service, order_db, "Reads/writes to")
+    Rel(payment_service, payment_db, "Reads/writes to")
+    Rel(inventory_service, inventory_db, "Reads/writes to")
+
+    Rel(payment_service, payment_gateway, "Authorizes/captures payments", "HTTPS")
+    Rel(order_service, shipping_provider, "Sends order for fulfillment", "Async Messaging")
+    Rel(order_service, inventory_service, "Updates inventory", "Async Messaging")
+```
+
+#### 3\. Component Diagram (Order Service)
+
+This diagram focuses on the internal components of the **Order Service** container, illustrating how it handles a new order request.
+
+**Description:**
+
+  * **API Controller:** The entry point for the Order Service. It receives API calls from the API Gateway and validates the request payload.
+  * **Order Orchestrator:** A central component that orchestrates the complex order creation process. It uses a Saga pattern to ensure transactional consistency across multiple services.
+  * **Inventory Client:** A component that communicates with the Inventory Service to reserve items.
+  * **Payment Client:** A component that communicates with the Payment Service to authorize payment.
+  * **Order Repository:** A component that manages data persistence in the Order Database, handling the saving and retrieval of order information.
+  * **Message Broker:** An asynchronous communication channel (like RabbitMQ or Apache Kafka) used to send events and commands between services, ensuring loose coupling and resilience. The Order Orchestrator uses it to send messages to the Inventory and Payment services.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Component
+    title Component Diagram for Order Service
+
+    Container(api_gateway, "API Gateway", "Node.js / Go")
+    ContainerDb(order_db, "Order DB", "PostgreSQL")
+    System_Ext(payment_service, "Payment Service")
+    System_Ext(inventory_service, "Inventory Service")
+    System_Ext(shipping_provider, "Shipping Provider")
+    Container_Ext(message_broker, "Message Broker", "RabbitMQ / Apache Kafka")
+
+    Container_Boundary(order_service, "Order Service") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives and validates order requests.")
+        Component(order_orchestrator, "Order Orchestrator", "Saga Coordinator", "Manages the multi-step order flow.")
+        Component(inventory_client, "Inventory Client", "gRPC Client", "Communicates with the Inventory Service.")
+        Component(payment_client, "Payment Client", "gRPC Client", "Communicates with the Payment Service.")
+        Component(order_repository, "Order Repository", "Spring Data JPA", "Manages persistence to the Order DB.")
+    }
+
+    Rel(api_gateway, api_controller, "Calls", "HTTPS")
+    Rel(api_controller, order_orchestrator, "Calls to start order process")
+    Rel(order_orchestrator, message_broker, "Sends 'Authorize Payment' message to")
+    Rel(message_broker, payment_service, "Delivers message to")
+    Rel(order_orchestrator, message_broker, "Sends 'Reserve Inventory' message to")
+    Rel(message_broker, inventory_service, "Delivers message to")
+    Rel(order_orchestrator, order_repository, "Updates order status in")
+    Rel(order_repository, order_db, "Reads/writes to")
+    Rel(order_orchestrator, shipping_provider, "Sends order for fulfillment to", "Async messaging")
+```
+
+### Architecture Decision Record
+
+#### ADR 1: Use a Microservices Architecture for a Scalable Online Shop
+
+**Status:** Proposed
+
+**Context:**
+The business goal is to build a modern online shop that can scale to handle a large and growing number of customers and products, especially during peak sales periods like Black Friday. The system must be resilient, with high availability, and support rapid, independent development and deployment of new features without impacting the entire platform. A monolithic architecture, while simpler to start with, would eventually become a bottleneck for scalability and development velocity.
+
+**Decision:**
+We will adopt a microservices architectural pattern. The system will be decomposed into a set of loosely coupled, independently deployable services, each owning a specific business capability (e.g., User Management, Product Catalog, Orders, Inventory, and Payments). These services will communicate with each other via a combination of synchronous (e.g., REST/gRPC) and asynchronous (e.g., message queues) mechanisms.
+
+**Consequences:**
+
+  * **Positive:**
+
+      * **Scalability:** Individual services can be scaled independently based on their specific load. For example, the Product Catalog Service can be scaled to handle high read traffic during browsing, while the Order Service can be scaled to handle peak transaction volumes.
+      * **Resilience:** A failure in one service (e.g., a bug in the Reviews service) will not bring down the entire system, ensuring critical functions like checkout remain available.
+      * **Development Velocity:** Small, focused teams can work on different services concurrently, using their preferred technology stack, leading to faster feature delivery.
+      * **Technology Flexibility:** Each service can use the best-fit technology for its specific function (e.g., a relational database for orders, a search-optimized database for products).
+
+  * **Negative:**
+
+      * **Increased Complexity:** The overall system is more complex to design, develop, deploy, and operate. This includes managing distributed transactions, service discovery, logging, monitoring, and debugging across multiple services.
+      * **Operational Overhead:** Requires a mature DevOps culture and tools for container orchestration (e.g., Kubernetes), service meshes, and automated CI/CD pipelines.
+      * **Data Consistency:** Maintaining data consistency across multiple, independent databases requires careful design, often using patterns like event sourcing and the Saga pattern, which adds complexity.
+      * **Inter-service Communication:** Network latency and potential failures in communication between services must be handled gracefully.
+
+**Alternatives Considered:**
+
+  * **Monolithic Architecture:** This approach would have a single, large application containing all business logic. It's simpler to start with and easier to deploy initially. However, it would eventually become a bottleneck for scalability, development, and team autonomy, as any change requires deploying the entire application. The risk of a single point of failure is also much higher.
+  * **Modular Monolith:** A middle-ground approach where a single application is structured into well-defined, modular components. While it offers some of the benefits of microservices (e.g., separation of concerns) without the full operational complexity, it still suffers from scaling limitations, as the entire monolith must be scaled, and it lacks true independent deployment of features. It was rejected because our primary requirement is a system that can scale infinitely and support a large number of development teams.
