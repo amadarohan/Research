@@ -1,0 +1,353 @@
+System Design for: 'Instagram'
+This document outlines the architectural design for a scalable photo and video sharing platform like Instagram. The design focuses on handling a massive volume of user-generated content, a high rate of uploads and a much higher rate of reads (feed viewing), while ensuring low latency and high availability.
+
+C4 Model Diagrams
+1. System Context Diagram
+The System Context diagram provides a high-level view of the Instagram system and its interactions with external users and systems. It shows the core platform interacting with users, third-party services for social logins, and CDNs for content delivery.
+
+Description:
+
+User: A person who creates a profile, uploads photos/videos, views their feed, and interacts with other users (likes, comments).
+
+Instagram (System in Scope): The main platform that manages all user content and interactions.
+
+Third-Party Login Service: An external system like Facebook or Google that provides authentication services for users.
+
+Content Delivery Network (CDN): A distributed network of servers that caches static content (like photos and videos) to deliver it to users with low latency.
+
+Mermaid.js Code:
+
+C4Context
+    title System Context Diagram for Instagram
+
+    Person(user, "User", "A person who shares and views photos/videos.")
+
+    System(instagram, "Instagram", "The core social media platform.")
+
+    System_Ext(third_party_login, "Third-Party Login Service", "Facebook/Google for authentication.")
+    System_Ext(cdn, "Content Delivery Network", "A global network to serve media content.")
+
+    Rel(user, instagram, "Uses via Mobile App/Web")
+    Rel(instagram, third_party_login, "Authenticates users via")
+    Rel(instagram, cdn, "Sends media to")
+    Rel(user, cdn, "Fetches media content from")
+
+2. Container Diagram
+This diagram zooms into the Instagram system, showing the major containers. The design leverages a microservices architecture to manage different functional domains and a tiered storage approach for content.
+
+Description:
+
+Mobile/Web Client: The application (iOS, Android, or web) that users interact with. It communicates with the API Gateway.
+
+API Gateway: The single entry point for all client requests. It handles authentication, rate limiting, and routes requests to the appropriate microservices.
+
+Upload Service: A microservice dedicated to handling photo and video uploads. It processes the content, generates multiple resolutions, and stores them.
+
+User Service: Manages user profiles, authentication, and follow relationships. It has a relational database for user data.
+
+Content Service: Manages metadata for all photos and videos (e.g., captions, hashtags). It's responsible for interacting with the blob storage and CDN.
+
+Social Graph Service: A specialized service that manages the follower/following relationships. This is a critical component for feed generation and is often a separate graph database.
+
+Feed Service: A core service that generates and serves personalized feeds for users. It aggregates content from the Social Graph and Content services.
+
+Activity Service: Handles likes, comments, and other user interactions. It pushes notifications and updates to other services.
+
+Media Store (Blob Storage): A highly scalable, object-based storage system (e.g., AWS S3, Google Cloud Storage) for storing raw and processed photos/videos.
+
+CDN (Content Delivery Network): A global network that caches and serves static media content to users, reducing latency and load on the primary services.
+
+Databases (Polyglot Persistence): Each microservice has its own dedicated database. The Social Graph service would use a graph database, while the User and Content services would likely use a relational database or a key-value store.
+
+Mermaid.js Code:
+
+C4Container
+    title Container Diagram for Instagram
+
+    Person(user, "User")
+    System_Ext(third_party_login, "Third-Party Login")
+    System_Ext(cdn, "Content Delivery Network")
+
+    System_Boundary(instagram_boundary, "Instagram") {
+        Container(mobile_client, "Mobile/Web Client", "iOS, Android, Web App", "User interface for the platform.")
+        Container(api_gateway, "API Gateway", "Go/Node.js", "Routes API calls and handles auth.")
+
+        Container(user_service, "User Service", "Java/Spring Boot", "Manages users and profiles.")
+        Container(upload_service, "Upload Service", "Python/Flask", "Handles media uploads and processing.")
+        Container(content_service, "Content Service", "Java", "Manages media metadata and hashtags.")
+        Container(social_graph_service, "Social Graph Service", "Scala/Akka", "Manages follower relationships.")
+        Container(feed_service, "Feed Service", "Go", "Generates and serves user feeds.")
+        Container(activity_service, "Activity Service", "Python", "Handles likes, comments, and notifications.")
+
+        ContainerDb(user_db, "User DB", "MySQL", "Stores user profiles.")
+        ContainerDb(content_db, "Content DB", "Cassandra", "Stores media metadata.")
+        ContainerDb(social_graph_db, "Social Graph DB", "Neo4j/Graph DB", "Stores follower relationships.")
+        ContainerDb(media_store, "Media Store", "AWS S3/GCS", "Stores raw and processed media files.")
+    }
+
+    Rel(user, mobile_client, "Uses")
+    Rel(mobile_client, api_gateway, "Makes API calls to", "HTTPS")
+
+    Rel(api_gateway, user_service, "Routes API calls to")
+    Rel(api_gateway, upload_service, "Routes API calls to")
+    Rel(api_gateway, content_service, "Routes API calls to")
+    Rel(api_gateway, social_graph_service, "Routes API calls to")
+    Rel(api_gateway, feed_service, "Routes API calls to")
+    Rel(api_gateway, activity_service, "Routes API calls to")
+
+    Rel(user_service, user_db, "Reads/writes to")
+    Rel(upload_service, media_store, "Saves media to")
+    Rel(content_service, content_db, "Reads/writes to")
+    Rel(social_graph_service, social_graph_db, "Reads/writes to")
+
+    Rel(upload_service, content_service, "Notifies of new content", "Async Messaging")
+    Rel(content_service, cdn, "Pushes media to")
+    Rel(feed_service, social_graph_service, "Queries for followed users")
+    Rel(feed_service, content_service, "Queries for content from followed users")
+    Rel(mobile_client, cdn, "Fetches media content from", "HTTPS")
+
+3. Component Diagram (Feed Service)
+This diagram focuses on the internal components of the Feed Service container, illustrating how it generates a user's feed.
+
+Description:
+
+API Controller: The entry point for the Feed Service. It receives requests from the API Gateway for a user's feed.
+
+Feed Generator: A component that orchestrates the feed creation process. It pulls data from various sources to build a personalized timeline.
+
+Social Graph Client: A component that communicates with the Social Graph Service to retrieve a list of users the current user follows.
+
+Content Store Client: A component that communicates with the Content Service to retrieve recent content for the list of followed users.
+
+Timeline Aggregator: A component that takes the content retrieved from various sources, merges it, and sorts it by a specific metric (e.g., reverse chronological order, or a relevance score).
+
+Feed Cache: A fast, in-memory cache (like Redis) that stores pre-generated feeds for quick retrieval, especially for users with many followers. This is a critical optimization to handle the high read-to-write ratio.
+
+Mermaid.js Code:
+
+C4Component
+    title Component Diagram for Feed Service
+
+    Container(api_gateway, "API Gateway", "Go/Node.js")
+    Container_Ext(social_graph_service, "Social Graph Service")
+    Container_Ext(content_service, "Content Service")
+    Container_Ext(activity_service, "Activity Service")
+    Container_Ext(feed_cache, "Feed Cache", "Redis Cluster")
+
+    Container_Boundary(feed_service, "Feed Service") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives user feed requests.")
+        Component(feed_generator, "Feed Generator", "Orchestrator", "Generates the user's feed.")
+        Component(social_graph_client, "Social Graph Client", "gRPC Client", "Fetches followees from Social Graph Service.")
+        Component(content_store_client, "Content Store Client", "gRPC Client", "Fetches content from Content Service.")
+        Component(timeline_aggregator, "Timeline Aggregator", "Logic Component", "Merges and sorts the content.")
+    }
+
+    Rel(api_gateway, api_controller, "Requests feed from", "HTTPS")
+    Rel(api_controller, feed_cache, "Checks for cached feed in")
+    Rel(feed_cache, api_controller, "Returns cached feed if exists")
+    Rel(api_controller, feed_generator, "Delegates to generate feed")
+    Rel(feed_generator, social_graph_client, "Queries for followed users")
+    Rel(social_graph_client, social_graph_service, "Retrieves follower list from")
+    Rel(feed_generator, content_store_client, "Queries for content from followed users")
+    Rel(content_store_client, content_service, "Retrieves content metadata from")
+    Rel(feed_generator, timeline_aggregator, "Passes content to be aggregated")
+    Rel(timeline_aggregator, feed_cache, "Writes generated feed to")
+    Rel(timeline_aggregator, api_controller, "Returns aggregated feed to")
+
+Architecture Decision Records
+ADR 1: Use a Fan-out on Read Strategy for the User Feed
+Status: Proposed
+
+Context:
+The core functionality of Instagram is serving a user's personalized feed. The system has an extremely high read-to-write ratio; a single photo upload (a write) can be viewed by millions of followers (reads). A fan-out on write model, where a post is pushed to all followers' timelines at the time of upload, becomes inefficient and can cause write amplification at a massive scale. A single user with millions of followers could overload the system with a single post. A fan-out on read model, where the feed is generated at the time of the request, is more scalable for this specific workload.
+
+Decision:
+We will implement a Fan-out on Read strategy for generating the user feed. When a user requests their feed, the Feed Service will:
+
+Fetch the user's list of followed users from the Social Graph Service.
+
+Query the Content Service to retrieve recent content from those followed users.
+
+Aggregate and sort the content to form the final timeline.
+
+Cache the generated feed for subsequent requests to reduce latency.
+
+Consequences:
+
+Positive:
+
+Scalability: The system scales effectively with the number of followers. A user with millions of followers does not cause a large number of writes for a single post. The reads are distributed across the system, and the cost is paid by the reader, not the writer.
+
+Simplicity: The write path is simple and efficient. The Upload Service only needs to write the content and metadata once, without needing to fan it out.
+
+Freshness: The feed is always fresh and reflects the most recent activity at the time of the request.
+
+Customization: It's easier to implement complex ranking algorithms (e.g., personalized, non-chronological feeds) because the entire timeline is generated dynamically.
+
+Negative:
+
+Increased Read Latency: For users with a large number of followers or who follow many people, generating the feed on the fly can be slow. This is mitigated by a robust caching strategy and using fast, optimized data stores.
+
+Load on Read: The feed generation process can be computationally expensive and resource-intensive, placing a heavy load on the Social Graph and Content services during peak read times. This requires careful load balancing and provisioning.
+
+Complexity: The Feed Service becomes a complex orchestrator, responsible for querying multiple services and handling potential failures or inconsistencies. The caching strategy also adds complexity.
+
+Alternatives Considered:
+
+Fan-out on Write: In this model, when a user uploads content, it is immediately pushed to the inboxes or timelines of all their followers. This leads to extremely low read latency for the feed (just a simple database lookup). However, it's not suitable for a large-scale system like Instagram due to:
+
+Write Amplification: A single post from a user with millions of followers would result in millions of database writes, potentially overwhelming the system.
+
+Storage Overhead: Requires a separate "timeline" or "inbox" for every user, which can consume significant storage. It was rejected because the write load would be unmanageable at scale.
+
+ADR 2: Asynchronous Media Processing Pipeline for Uploads
+Status: Proposed
+
+Context:
+Instagram handles a massive volume of user-generated photos and videos. Raw uploads are often large and in various formats, which are unsuitable for efficient delivery to diverse client devices (mobile, web) and network conditions. Processing this media synchronously during upload would lead to high latency and poor user experience. The system needs to efficiently transform and store media while ensuring high availability and scalability.
+
+Decision:
+We will implement an asynchronous media processing pipeline after initial media ingestion.
+
+Direct Upload to Blob Storage: The Upload Service will initially receive the raw photo/video and directly stream it to a highly scalable Cloud Object Storage (Media Store). This decouples the client's upload success from the intensive processing.
+
+Message Queue for Processing: Upon successful raw upload, the Upload Service will publish a message to a message queue (e.g., Kafka) containing details about the new media.
+
+Dedicated Processing Workers: A fleet of Processing Workers (which could be part of the Upload Service or a separate Media Processing Service) will consume messages from the queue. Each worker will:
+
+Download the raw media.
+
+Generate multiple image sizes/resolutions (e.g., thumbnails, medium, high-res) for photos.
+
+Transcode videos into various formats and bitrates for adaptive streaming.
+
+Apply any necessary watermarks or metadata.
+
+Upload all processed renditions back to the Media Store.
+
+CDN Integration: The Content Service will instruct the CDN to pull media directly from the Media Store, distributing it globally for low-latency delivery.
+
+Consequences:
+
+Positive:
+
+Scalability & Resilience for Uploads: Decoupling processing from upload ensures the system can handle a high volume of concurrent uploads without becoming a bottleneck. The message queue provides resilience against temporary processing failures.
+
+Optimized Content Delivery: Generating multiple renditions allows clients to fetch the most appropriate size/quality, improving load times and user experience across diverse devices and networks.
+
+Cost-Effective Storage: Cloud Object Storage is highly cost-effective and scalable for storing vast amounts of media.
+
+Improved User Experience: Users receive quick confirmation of their upload, with processing happening transparently in the background.
+
+Negative:
+
+Increased Complexity: The media processing pipeline itself is a complex distributed system to build, monitor, and maintain.
+
+Eventual Consistency: There will be a small delay between the raw upload and when all processed renditions are available and indexed for viewing.
+
+Resource Consumption: Media transcoding and resizing are CPU-intensive operations, requiring significant computational resources.
+
+Error Handling: Robust error handling is needed for failed processing jobs (e.g., malformed files, transient worker issues), potentially requiring retries or dead-letter queues.
+
+Alternatives Considered:
+
+Client-Side Processing: Requiring the user's client application to resize/transcode media before uploading. This is unreliable, inconsistent across devices, and resource-intensive for the client, leading to a poor user experience. Rejected for reliability and UX.
+
+Synchronous Server-Side Processing: Performing all media processing immediately upon receiving the raw upload. This would block the upload request, leading to high latency and timeouts for users, and would be a significant bottleneck for the Upload Service. Rejected for performance and scalability.
+
+Database BLOB Storage: Storing raw or processed media directly in a relational or NoSQL database. This is generally inefficient for large binary objects, leading to database bloat, slow backups, and performance bottlenecks for read/write operations at scale. Rejected for scalability and performance.
+
+ADR 3: Social Graph Data Storage with a Graph Database
+Status: Proposed
+
+Context:
+The core of Instagram's social experience is the "social graph," representing follower/following relationships between users. Efficiently querying these relationships is paramount for feed generation, discovering new users, and displaying connections. Traditional relational databases (SQL) are highly inefficient for complex graph traversals (e.g., finding mutual followers, discovering friends of friends) at Instagram's scale, leading to performance bottlenecks with many JOIN operations.
+
+Decision:
+The Social Graph Service will primarily use a Graph Database (e.g., Neo4j, Apache JanusGraph, or a custom distributed graph solution built on a scalable NoSQL store like Cassandra). This choice is optimized for storing and querying interconnected data (nodes representing users, edges representing "follows" relationships). For very high-frequency, simple lookups (e.g., "get immediate followers for user X"), a distributed in-memory cache (e.g., Redis) might also be used to cache popular sub-graphs or adjacency lists.
+
+Consequences:
+
+Positive:
+
+Optimized for Traversals: Graph databases are purpose-built for efficient graph traversal operations, making queries like "who does user A follow?" or "who are A's mutual followers with B?" extremely fast, even at scale.
+
+Natural Data Modeling: The concept of users and relationships maps directly to nodes and edges, simplifying data modeling and business logic for social interactions.
+
+Flexibility: Easily extendable to include more complex relationships or attributes on edges (e.g., "followed since date").
+
+Scalability: Modern graph databases are designed to be distributed, allowing for horizontal scaling of the social graph.
+
+Negative:
+
+Specialized Expertise: Graph databases are less common than relational or key-value stores, requiring specialized expertise for development, operation, and optimization.
+
+Operational Complexity: Managing a distributed graph database cluster can be more complex than managing traditional databases.
+
+Potentially Higher Cost: Commercial graph database solutions can be expensive, and open-source alternatives require significant in-house effort.
+
+Not a General-Purpose Database: While excellent for graph data, it's not ideal for general-purpose key-value lookups or complex aggregations that don't involve relationships. Other services will use different databases.
+
+Alternatives Considered:
+
+Relational Database (e.g., MySQL with adjacency lists): While possible to store graph data in a relational database (e.g., using an edge table (follower_id, followee_id)), queries involving multiple "hops" (e.g., "friends of friends") become extremely inefficient due to recursive JOINs, leading to unacceptable latency at scale. Rejected for performance limitations.
+
+Key-Value/Document Store (e.g., Cassandra/MongoDB with adjacency lists): Storing each user's follower/following list as a document or a list in a key-value store. This is efficient for simple, single-hop lookups ("get all followers of X"). However, multi-hop traversals or complex relationship queries still require significant application-level logic and multiple database calls, making them less performant and more complex than a native graph database. Rejected for complexity of graph traversals and performance.
+
+ADR 4: Event-Driven Activity Logging and Real-time Notifications
+Status: Proposed
+
+Context:
+Instagram generates a massive volume of user activity events every second (likes, comments, new posts, follow events). These events need to be:
+
+Persistently stored for historical data and analytics.
+
+Processed in real-time to generate notifications for relevant users.
+
+Used to trigger updates in other services (e.g., feed cache invalidation).
+Directly writing every single activity event to a traditional database would create an immense write bottleneck.
+
+Decision:
+We will implement an event-driven architecture using a Distributed Message Queue (e.g., Apache Kafka) as the central hub for all user activity logging and real-time processing.
+
+Activity Ingestion: When a user performs an action (like, comment, follow), the Activity Service will validate the action and publish a rich activity event (e.g., PostLikedEvent, CommentAddedEvent) to a Kafka topic.
+
+Multiple Consumers: Various downstream services will act as independent consumers of these activity events:
+
+Persistence Consumer: A dedicated consumer will persist all activity events to a scalable, write-optimized NoSQL database (e.g., Cassandra) for historical data, audit trails, and analytics.
+
+Notification Consumer: This consumer will filter relevant events, enrich them (e.g., fetch user profile data), and send requests to a dedicated Notification Service to deliver real-time push notifications or in-app alerts to affected users.
+
+Feed Cache Invalidation Consumer: For activities like new posts from followed users, this consumer will invalidate the relevant user feeds in the Feed Cache (ADR 1) to ensure freshness.
+
+Analytics/Recommendation Consumers: Events can be consumed by real-time analytics dashboards or fed into recommendation engines for personalized content suggestions.
+
+Consequences:
+
+Positive:
+
+High Throughput & Scalability: Kafka is designed for extremely high write volumes, effectively absorbing the massive stream of activity events without becoming a bottleneck.
+
+Decoupling: Services are loosely coupled. The Activity Service doesn't need to know who is interested in an event; it simply publishes it.
+
+Resilience: Kafka's durability ensures events are not lost even if consumers are temporarily down. Consumers can process events at their own pace.
+
+Real-time Processing: Enables real-time analytics and immediate notification delivery.
+
+Audit Trail: Kafka provides an immutable, ordered log of all activity events, which is invaluable for debugging, auditing, and compliance.
+
+Negative:
+
+Increased Complexity: Introducing a distributed message queue and multiple consumers adds significant operational and architectural complexity.
+
+Eventual Consistency: Activity data will be eventually consistent across various downstream systems. Users might see a like count update before their notification arrives.
+
+Idempotency: All consumers must be designed to be idempotent to handle potential duplicate messages from Kafka (which can occur during re-balancing or retries), preventing erroneous data or duplicate notifications.
+
+Monitoring & Debugging: Tracing events through multiple services and topics requires sophisticated monitoring and logging tools.
+
+Alternatives Considered:
+
+Direct Writes to Database for All Activities: The Activity Service would directly write every like, comment, etc., to a database. This would quickly overwhelm any single database, leading to severe performance bottlenecks and write contention at Instagram's scale. Rejected for lack of scalability and performance.
+
+Synchronous RPC Calls for Notifications/Updates: The Activity Service would directly call the Notification Service or Feed Service synchronously. This would couple services tightly, introduce latency, and lead to cascading failures if a downstream service is slow or unavailable. Rejected for poor resilience and scalability.
