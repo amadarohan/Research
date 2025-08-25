@@ -1,0 +1,350 @@
+System Design for: 'Location-Based Service like Yelp'
+This document outlines the architectural design for a scalable, location-based service similar to Yelp. The system is designed to handle user-generated content (reviews, photos), discoverability of local businesses, and a high volume of search queries, all with a focus on real-time and geographically relevant data.
+
+C4 Model Diagrams
+1. System Context Diagram
+The System Context diagram provides a high-level view of the Location-Based Service and its interactions with external users and systems. It shows the core platform interacting with users, businesses, and third-party map providers.
+
+Description:
+
+User: A person who searches for local businesses, views reviews, submits their own reviews and photos, and can check in to a location.
+
+Business Owner: A person who claims a business profile to manage information, respond to reviews, and run promotions.
+
+Location-Based Service (System in Scope): The central platform that stores and serves business data, reviews, and provides search and discovery functionalities.
+
+Third-Party Map Service: An external system (e.g., Google Maps, Apple Maps) that provides geocoding, mapping, and routing services.
+
+Mermaid.js Code:
+
+C4Context
+    title System Context Diagram for Location-Based Service
+
+    Person(user, "User", "Searches for places, writes reviews, and uploads photos.")
+    Person(business_owner, "Business Owner", "Manages business profile and responds to reviews.")
+
+    System(lbs, "Location-Based Service", "The core system for discovering and reviewing local businesses.")
+
+    System_Ext(map_service, "Third-Party Map Service", "Provides mapping, routing, and geocoding.")
+
+    Rel(user, lbs, "Submits queries to, uploads content to")
+    Rel(business_owner, lbs, "Manages business profile on")
+    Rel(lbs, map_service, "Requests map data and geocoding from")
+    Rel(user, map_service, "Views maps and directions from", "Via LBS client")
+
+2. Container Diagram
+This diagram zooms into the Location-Based Service, showing the major independently deployable components. The design uses a microservices architecture to handle the diverse functionalities.
+
+Description:
+
+Mobile/Web Client: The application (iOS, Android, or web) that users and business owners interact with. It communicates with the API Gateway.
+
+API Gateway: The single entry point for all client requests. It handles authentication, rate limiting, and routes requests to the appropriate microservices.
+
+User Service: A microservice that manages user profiles, authentication, and user data. It has its own relational database.
+
+Business Service: A microservice that manages business profiles, including name, address, hours, and categories. It needs a highly scalable database.
+
+Content Service: A microservice that handles user-generated content, such as reviews and photos. It stores review text in a database and photos in an object store.
+
+Search Service: The core search functionality. It takes a user's query and location and returns relevant businesses. This component relies on a highly optimized search index.
+
+Ranking Service: A component that scores search results based on a multitude of factors, including relevance, rating, distance, and user history.
+
+Geospatial Index: A specialized data store optimized for spatial queries (e.g., "find all businesses within 5 miles of this location").
+
+Search Index: A highly scalable index (e.g., Elasticsearch or a custom solution) for text-based search queries on business names, reviews, and categories.
+
+Object Store: A highly scalable blob storage system (e.g., AWS S3, Google Cloud Storage) for storing photos and other media.
+
+Mermaid.js Code:
+
+C4Container
+    title Container Diagram for Location-Based Service
+
+    Person(user, "User")
+    Person(business_owner, "Business Owner")
+    System_Ext(map_service, "Third-Party Map Service")
+
+    System_Boundary(lbs_boundary, "Location-Based Service") {
+        Container(mobile_client, "Mobile/Web Client", "iOS, Android, Web App", "User interface for the platform.")
+        Container(api_gateway, "API Gateway", "Go/NGINX", "Routes API calls and handles auth.")
+
+        Container(user_service, "User Service", "Java", "Manages user profiles and authentication.")
+        Container(business_service, "Business Service", "Python", "Manages business profiles and details.")
+        Container(content_service, "Content Service", "Node.js", "Handles reviews and photo uploads.")
+        Container(search_service, "Search Service", "Java", "Handles business search and discovery.")
+        Container(ranking_service, "Ranking Service", "Python/TensorFlow", "Ranks search results.")
+
+        ContainerDb(user_db, "User DB", "MySQL", "Stores user profiles.")
+        ContainerDb(business_db, "Business DB", "Cassandra", "Stores business details.")
+        ContainerDb(review_db, "Review DB", "PostgreSQL", "Stores review text and ratings.")
+        ContainerDb(geo_index, "Geospatial Index", "Elasticsearch/PostGIS", "Optimized for spatial queries.")
+        ContainerDb(search_index, "Search Index", "Elasticsearch", "Optimized for text-based search.")
+        ContainerDb(object_store, "Object Store", "AWS S3/GCS", "Stores photos and media.")
+    }
+
+    Rel(user, mobile_client, "Uses")
+    Rel(business_owner, mobile_client, "Uses")
+    Rel(mobile_client, api_gateway, "Makes API calls to", "HTTPS")
+
+    Rel(api_gateway, user_service, "Routes API calls to")
+    Rel(api_gateway, business_service, "Routes API calls to")
+    Rel(api_gateway, content_service, "Routes API calls to")
+    Rel(api_gateway, search_service, "Routes API calls to")
+
+    Rel(user_service, user_db, "Reads/writes to")
+    Rel(business_service, business_db, "Reads/writes to")
+    Rel(content_service, review_db, "Reads/writes to")
+    Rel(content_service, object_store, "Saves photos to")
+    Rel(search_service, geo_index, "Queries for location-based results")
+    Rel(search_service, search_index, "Queries for text-based results")
+    Rel(search_service, ranking_service, "Passes results for ranking")
+    Rel(ranking_service, search_service, "Returns ranked results to")
+
+3. Component Diagram (Search Service)
+This diagram focuses on the internal components of the Search Service container, illustrating how it handles a user's search query.
+
+Description:
+
+API Controller: The entry point for the Search Service. It receives a search query from the API Gateway, including the user's location and search terms.
+
+Query Parser: A component that takes the raw query string and extracts key information, such as business type ("restaurants"), name ("The Corner Cafe"), and location details ("near me").
+
+Geospatial Client: A component that queries the Geospatial Index to find businesses within the user's defined search area.
+
+Search Index Client: A component that queries the Search Index for businesses that match the extracted text terms.
+
+Results Aggregator: A component that combines the results from both the Geospatial Client and the Search Index Client. It de-duplicates entries and forms a unified list of candidate businesses.
+
+Ranking Service Client: A component that sends the unified list of businesses to the Ranking Service for scoring and sorting based on relevance.
+
+Mermaid.js Code:
+
+C4Component
+    title Component Diagram for Search Service
+
+    Container(api_gateway, "API Gateway")
+    Container_Ext(geo_index, "Geospatial Index", "Elasticsearch")
+    Container_Ext(search_index, "Search Index", "Elasticsearch")
+    Container_Ext(ranking_service, "Ranking Service")
+
+    Container_Boundary(search_service, "Search Service") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives search requests.")
+        Component(query_parser, "Query Parser", "NLP/Lexer", "Extracts terms and location from query.")
+        Component(geo_client, "Geospatial Client", "Elasticsearch Client", "Queries the geospatial index.")
+        Component(search_client, "Search Index Client", "Elasticsearch Client", "Queries the main search index.")
+        Component(results_aggregator, "Results Aggregator", "Logic Component", "Combines results from multiple sources.")
+        Component(ranking_client, "Ranking Service Client", "gRPC Client", "Sends results for ranking.")
+    }
+
+    Rel(api_gateway, api_controller, "Sends search query to", "HTTPS")
+    Rel(api_controller, query_parser, "Passes query to")
+    Rel(query_parser, geo_client, "Sends geospatial query to")
+    Rel(geo_client, geo_index, "Queries for nearby businesses")
+    Rel(query_parser, search_client, "Sends text search query to")
+    Rel(search_client, search_index, "Queries for matching businesses")
+    Rel(geo_client, results_aggregator, "Passes location-based results to")
+    Rel(search_client, results_aggregator, "Passes text-based results to")
+    Rel(results_aggregator, ranking_client, "Sends combined results for ranking")
+    Rel(ranking_client, ranking_service, "Requests ranking from")
+    Rel(ranking_client, api_controller, "Returns ranked results to")
+
+Architecture Decision Records
+ADR 1: Use a Dual-Indexing Strategy for Text and Geospatial Search
+Status: Proposed
+
+Context:
+A core requirement of a location-based service is to perform two distinct types of searches efficiently:
+
+Text Search: Finding businesses based on name, category, or review content (e.g., "best Italian food").
+
+Geospatial Search: Finding businesses within a specific geographical area (e.g., "restaurants near me").
+A single, monolithic database or index is unlikely to be optimized for both of these demanding query types. Using separate, purpose-built indices will provide superior performance and scalability.
+
+Decision:
+We will implement a dual-indexing strategy, utilizing two separate and highly optimized indices:
+
+A Geospatial Index: This index will store the location coordinates of every business. It will be a highly performant, in-memory or SSD-backed index designed to handle complex geospatial queries like proximity searches (find all points within a 5-mile radius) and boundary searches (is this point inside a specific neighborhood?).
+
+A Full-Text Search Index: This index will store all business data that is searchable by text, including names, descriptions, categories, and review content. It will be a distributed, inverted index (like Elasticsearch or Apache Solr) optimized for fast, complex, text-based queries.
+
+When a user performs a search, the Search Service will run a query against both indices in parallel. The results will then be aggregated and ranked before being returned to the user.
+
+Consequences:
+
+Positive:
+
+Performance: Queries for both text and location will be extremely fast as they are handled by specialized, purpose-built systems. This leads to a low-latency user experience.
+
+Scalability: Each index can be scaled independently. If the volume of text reviews grows, we can scale the Full-Text Search Index without affecting the Geospatial Index, and vice versa.
+
+Flexibility: This architecture allows for advanced search features, such as combining location and text-based filters in a single query (e.g., "find sushi restaurants near me that have a high rating").
+
+Negative:
+
+Increased Complexity: This design requires managing and synchronizing two separate data stores. We need a reliable mechanism to ensure that when a new business is added or updated, both the Geospatial and Full-Text indices are updated correctly and consistently.
+
+Data Redundancy: Some data (like business names and IDs) will be duplicated across both indices, which slightly increases storage requirements.
+
+Operational Overhead: We have to maintain and monitor two different types of databases, each with its own scaling and operational considerations.
+
+Alternatives Considered:
+
+Single Relational Database with Geospatial Extensions: Using a database like PostgreSQL with the PostGIS extension. While this is a viable option for smaller-scale systems, it is unlikely to scale to Yelp's level of traffic and data volume. The performance of a single database would eventually become a bottleneck for both query types. This was rejected because it doesn't meet the high-throughput requirements.
+
+Single NoSQL Database: Using a single NoSQL database. While some NoSQL databases support geospatial queries, they are generally not as optimized for complex, real-time text search and vice-versa. Trying to force a single solution to do both tasks well would likely result in compromises in performance for one or both. This was rejected for the same reasons.
+
+ADR 2: User-Generated Content (UGC) Ingestion, Storage, and Moderation
+Status: Proposed
+
+Context:
+A core feature of a location-based service is user-generated content (UGC), primarily reviews and photos. This content is critical for business discoverability and user engagement but also poses significant challenges in terms of ingestion, scalable storage, and moderation to ensure quality and prevent abuse (spam, offensive content).
+
+Decision:
+We will implement a robust UGC pipeline with asynchronous processing and dedicated moderation capabilities.
+
+Ingestion & Validation: When a user submits a review or photo via the Content Service, the content will undergo immediate basic validation (e.g., file type, size, minimum text length).
+
+Asynchronous Processing: Validated content will be pushed to a message queue (e.g., Kafka) for asynchronous processing. This decouples the client response from heavy backend tasks.
+
+Review Text Storage: Review text (with associated metadata like user ID, business ID, rating) will be stored in a scalable, transactional database (e.g., PostgreSQL for its strong consistency and querying capabilities for reviews).
+
+Photo Storage: Photos will be uploaded directly to a Cloud Object Store (e.g., AWS S3, Google Cloud Storage) for massive scalability and durability. Metadata about the photos (URL, user, business) will be stored in the database.
+
+Moderation Pipeline: A separate, asynchronous moderation service will consume content from the message queue. It will utilize a combination of automated tools (e.g., AI for sentiment analysis, spam detection, image recognition for inappropriate content) and human moderators to review and approve/reject content. Rejected content will not be displayed.
+
+Consequences:
+
+Positive:
+
+Scalability: Asynchronous processing and cloud object storage can handle massive volumes of UGC.
+
+Resilience: The message queue acts as a buffer, ensuring content is processed even if downstream services are temporarily unavailable.
+
+Quality Control: A dedicated moderation pipeline helps maintain content quality, builds trust, and mitigates legal/reputational risks.
+
+Improved User Experience: Users get immediate feedback on content submission, while heavy processing happens in the background.
+
+Negative:
+
+Increased Complexity: Implementing a full UGC pipeline with asynchronous processing, multiple storage types, and moderation layers adds significant architectural and operational complexity.
+
+Eventual Consistency: There will be a delay between content submission and its appearance on the platform due to asynchronous processing and moderation.
+
+Cost: Running automated moderation tools (especially AI/ML services) and managing human moderation teams incurs significant operational costs.
+
+False Positives/Negatives: Automated moderation systems are not perfect and will require continuous tuning and human oversight to minimize incorrect flagging.
+
+Alternatives Considered:
+
+Direct Database Storage for All UGC: Storing large binary data (photos) directly in a traditional database alongside review text. This would quickly lead to database bloat, performance bottlenecks, and increased backup/restore times. Rejected for scalability and performance.
+
+Synchronous Moderation: Performing all moderation checks synchronously before allowing content submission. This would lead to very high latency for users, potentially frustrating them, and would make the Content Service a bottleneck. Rejected for poor user experience and scalability.
+
+No Moderation: Allowing all UGC to be immediately visible. This is unacceptable for a public platform due to the high risk of spam, offensive content, and legal liabilities. Rejected for platform integrity and safety.
+
+ADR 3: Real-time Geocoding and Reverse Geocoding Integration
+Status: Proposed
+
+Context:
+Accurate location data is paramount for a location-based service. This involves two primary operations:
+
+Geocoding: Converting a human-readable address (e.g., "1600 Amphitheatre Parkway, Mountain View, CA") into geographical coordinates (latitude, longitude). This is needed when businesses are onboarded or their addresses updated.
+
+Reverse Geocoding: Converting geographical coordinates into a human-readable address or place name. This is needed for displaying nearby addresses or for logging user locations.
+Performing these operations accurately and at scale in real-time requires leveraging specialized services.
+
+Decision:
+We will integrate with third-party Map Service APIs (e.g., Google Maps Geocoding API, Apple MapKit) for both geocoding and reverse geocoding.
+
+Business Onboarding/Updates: The Business Service will send business addresses to the third-party Map Service for geocoding when new businesses are added or their addresses are updated. The resulting coordinates will be stored in the Business DB and indexed in the Geospatial Index.
+
+User Location: Client applications will use device-level GPS to get user coordinates, which are then passed to the Search Service. If a human-readable location is needed (e.g., "San Francisco"), the Search Service will use reverse geocoding via the third-party API.
+
+Caching: Results from geocoding and reverse geocoding will be aggressively cached (e.g., in Redis) to reduce API call costs and improve performance.
+
+Consequences:
+
+Positive:
+
+Accuracy & Reliability: Leveraging established third-party services ensures high accuracy and reliability for location data, which is difficult to achieve in-house.
+
+Reduced Development Effort: Avoids the immense complexity of building and maintaining custom geocoding and reverse geocoding engines.
+
+Global Coverage: Third-party services offer extensive global coverage for addresses and points of interest.
+
+Feature Richness: Access to additional features like routing and place details through the same API.
+
+Negative:
+
+Cost: Extensive use of third-party map APIs can incur significant costs, especially at scale. Efficient caching and careful API usage are crucial.
+
+Vendor Lock-in: The system becomes dependent on a specific third-party provider, making switching providers potentially challenging.
+
+Rate Limits & Throttling: Third-party APIs often have rate limits, requiring careful management within the application to avoid exceeding quotas.
+
+Latency: While generally low, there is inherent network latency when calling external APIs.
+
+Data Privacy: Handling user location data requires careful adherence to privacy regulations and secure transmission to third-party services.
+
+Alternatives Considered:
+
+Self-Hosting an Open-Source Geocoding Engine (e.g., Nominatim with OpenStreetMap data): Offers full control and potentially lower long-term costs for very high volume, but requires significant operational expertise, data management, and compute resources. Rejected for high operational overhead and complexity.
+
+Storing Raw Addresses and Computing on the Fly: This would mean not storing coordinates but trying to compute them at query time. This is extremely inefficient and would introduce unacceptable latency for location-based searches. Rejected for performance.
+
+ADR 4: Caching Strategy for High-Read Data
+Status: Proposed
+
+Context:
+A location-based service is inherently read-heavy, especially for popular businesses, search results for common queries, and user content. Repeatedly fetching this data from primary databases for every request would lead to high latency, increased database load, and unnecessary costs. An effective caching strategy is essential to improve performance and scalability.
+
+Decision:
+We will implement a multi-layered caching strategy focusing on both in-memory and distributed caches for frequently accessed data.
+
+API Gateway Cache: The API Gateway will implement a simple edge cache for static or infrequently changing content (e.g., general business information, popular search results for broad queries). This reduces load on downstream services.
+
+Distributed In-Memory Cache (e.g., Redis or Memcached): A fast, distributed key-value store will be used to cache:
+
+Popular Business Profiles: Full business details for highly viewed or frequently searched businesses.
+
+Common Search Results: Results for frequently occurring search queries (location-specific or general).
+
+User Profiles: Basic user data (e.g., for authentication context).
+
+Geocoding/Reverse Geocoding Results: As discussed in ADR 3.
+
+Client-Side Cache: Mobile and web clients will implement their own local caching mechanisms for data that doesn't change frequently.
+
+Cache Invalidation: A cache-aside pattern will be used. Data updates in primary databases will trigger asynchronous cache invalidation messages (e.g., via a message queue) to ensure cached data remains fresh. Time-to-live (TTL) will be applied to all cached entries.
+
+Consequences:
+
+Positive:
+
+Dramatic Performance Improvement: Significantly reduces latency for common read operations, leading to a much faster and more responsive user experience.
+
+Reduced Database Load: Offloads a significant amount of read traffic from primary databases, allowing them to focus on write operations and reducing scaling pressure.
+
+Cost Reduction: Fewer database calls can mean lower operational costs for database infrastructure.
+
+Increased System Throughput: The entire system can handle a higher volume of requests due to faster data access.
+
+Negative:
+
+Cache Invalidation Complexity: Ensuring cached data remains fresh and invalidating stale entries correctly is a hard problem. Poorly managed invalidation can lead to users seeing outdated information.
+
+Data Consistency: Caches introduce eventual consistency. There will be a brief window where cached data might not reflect the absolute latest state of the primary database.
+
+Operational Overhead: Managing and monitoring distributed cache clusters (e.g., Redis) adds to the operational burden.
+
+Memory Consumption: Large caches require significant memory resources, which can be a cost factor.
+
+Alternatives Considered:
+
+No Caching: Every read request would hit the primary databases. This would be unacceptably slow and lead to severe database bottlenecks at scale. Rejected for performance and scalability.
+
+Client-Side Caching Only: While beneficial, relying solely on client-side caches doesn't alleviate the load on backend services for initial requests or for data not present in the client's cache. Rejected for insufficient backend load reduction.
+
+Write-Through/Write-Back Caching: These patterns involve writing data directly to the cache and then asynchronously to the database. While offering strong consistency and lower write latency for the application, they add complexity to cache logic and are often overkill for read-heavy scenarios with simpler data models. Cache-aside with explicit invalidation is generally preferred for its simplicity and effectiveness in read-heavy systems.
