@@ -1,0 +1,370 @@
+System Design for: 'Food Delivery App like DoorDash'
+This document outlines the architectural design for a scalable food delivery application similar to DoorDash. The system must handle a high volume of orders, real-time tracking of drivers and orders, efficient matching of orders to drivers, and seamless interactions between customers, restaurants, and drivers, all while maintaining low latency and high availability.
+
+C4 Model Diagrams
+1. System Context Diagram
+The System Context diagram provides a high-level view of the Food Delivery App and its interactions with external users and systems. It shows the core platform interacting with customers, restaurants, drivers, and various third-party services.
+
+Description:
+
+Customer: A person who browses restaurants, places orders, tracks deliveries, and makes payments via the mobile app.
+
+Restaurant: A business that receives orders, prepares food, and communicates readiness to the platform.
+
+Driver: A person who accepts delivery requests, picks up food from restaurants, and delivers it to customers.
+
+Food Delivery App (System in Scope): The central platform that facilitates the ordering, delivery, and payment process.
+
+Third-Party Payment Gateway: An external service that securely processes credit card and other payments.
+
+Third-Party Map Service: An external system (e.g., Google Maps) that provides geocoding, routing, and real-time traffic information.
+
+SMS Gateway: An external service that sends SMS notifications to customers, restaurants, and drivers.
+
+Mermaid.js Code:
+
+C4Context
+    title System Context Diagram for Food Delivery App
+
+    Person(customer, "Customer", "Orders food and tracks delivery.")
+    Person(restaurant, "Restaurant", "Prepares food and receives orders.")
+    Person(driver, "Driver", "Picks up and delivers food.")
+
+    System(food_delivery_app, "Food Delivery App", "The core platform for food ordering and delivery.")
+
+    System_Ext(payment_gateway, "Payment Gateway", "Processes payments securely.")
+    System_Ext(map_service, "Third-Party Map Service", "Provides mapping, routing, and geocoding.")
+    System_Ext(sms_gateway, "SMS Gateway", "Sends SMS notifications.")
+
+    Rel(customer, food_delivery_app, "Places orders via")
+    Rel(restaurant, food_delivery_app, "Manages orders via")
+    Rel(driver, food_delivery_app, "Accepts/manages deliveries via")
+    Rel(food_delivery_app, payment_gateway, "Processes payments via")
+    Rel(food_delivery_app, map_service, "Gets map/route data from")
+    Rel(food_delivery_app, sms_gateway, "Sends notifications via")
+
+2. Container Diagram
+This diagram zooms into the Food Delivery App system, showing the major independently deployable components. The design uses a microservices architecture to handle the complex, real-time interactions.
+
+Description:
+
+Customer App/Web: The mobile or web application used by customers to browse, order, and track deliveries.
+
+Restaurant App/Portal: The application or web portal used by restaurants to receive orders, update status, and manage their menu.
+
+Driver App: The mobile application used by drivers to accept orders, navigate, and update delivery status.
+
+API Gateway: The single entry point for all client requests. It handles authentication, rate limiting, and routes requests to the appropriate microservices.
+
+User Service: Manages user profiles (customers, restaurants, drivers), authentication, and account data.
+
+Order Service: The core microservice that manages the lifecycle of an order (creation, processing, assignment, delivery, completion).
+
+Restaurant Service: Manages restaurant details, menus, availability, and pricing.
+
+Driver Location Service: A high-throughput, real-time service that tracks the live GPS location of all active drivers.
+
+Matching Service: A specialized service that efficiently matches new orders with available and suitable drivers.
+
+Payment Service: Handles all payment-related logic and communicates with the third-party Payment Gateway.
+
+Notification Service: Sends real-time notifications to customers, restaurants, and drivers via SMS or push notifications.
+
+Geospatial Database: A specialized data store optimized for storing and querying geographical data (e.g., driver locations, restaurant locations).
+
+Order Database: A relational or document database that stores order history, status, and details.
+
+Menu Database: A database that stores restaurant menus and associated items.
+
+Mermaid.js Code:
+
+C4Container
+    title Container Diagram for Food Delivery App
+
+    Person(customer, "Customer")
+    Person(restaurant, "Restaurant")
+    Person(driver, "Driver")
+    System_Ext(map_service, "Third-Party Map Service")
+    System_Ext(payment_gateway, "Payment Gateway")
+    System_Ext(sms_gateway, "SMS Gateway")
+
+    System_Boundary(food_delivery_app_boundary, "Food Delivery App") {
+        Container(customer_client, "Customer App/Web", "iOS, Android, Web App", "User interface for ordering food.")
+        Container(restaurant_client, "Restaurant App/Portal", "Web Portal/Tablet App", "Interface for managing orders.")
+        Container(driver_client, "Driver App", "iOS, Android App", "Interface for managing deliveries.")
+        Container(api_gateway, "API Gateway", "Go/NGINX", "Routes API calls and handles auth.")
+
+        Container(user_service, "User Service", "Java", "Manages user profiles (C/R/D).")
+        Container(order_service, "Order Service", "Python", "Manages the order lifecycle.")
+        Container(restaurant_service, "Restaurant Service", "Node.js", "Manages restaurant details and menus.")
+        Container(driver_location_service, "Driver Location Service", "Go", "Tracks driver locations in real-time.")
+        Container(matching_service, "Matching Service", "Java/C++", "Matches orders with drivers.")
+        Container(payment_service, "Payment Service", "Python", "Handles all payment logic.")
+        Container(notification_service, "Notification Service", "Node.js", "Sends real-time notifications.")
+
+        ContainerDb(user_db, "User DB", "PostgreSQL", "Stores customer, restaurant, driver profiles.")
+        ContainerDb(order_db, "Order DB", "MongoDB", "Stores order history and status.")
+        ContainerDb(menu_db, "Menu DB", "PostgreSQL", "Stores restaurant menus.")
+        ContainerDb(geo_db, "Geospatial DB", "Redis/Cassandra", "Stores real-time driver locations.")
+    }
+
+    Rel(customer, customer_client, "Uses")
+    Rel(restaurant, restaurant_client, "Uses")
+    Rel(driver, driver_client, "Uses")
+
+    Rel(customer_client, api_gateway, "Makes API calls to", "HTTPS")
+    Rel(restaurant_client, api_gateway, "Makes API calls to", "HTTPS")
+    Rel(driver_client, api_gateway, "Makes API calls to", "HTTPS")
+
+    Rel(api_gateway, user_service, "Routes auth/profile API calls to")
+    Rel(api_gateway, order_service, "Routes order API calls to")
+    Rel(api_gateway, restaurant_service, "Routes restaurant/menu API calls to")
+    Rel(api_gateway, driver_location_service, "Routes driver location updates to")
+
+    Rel(order_service, user_db, "Queries customer/driver info from")
+    Rel(order_service, order_db, "Saves/updates order status in")
+    Rel(order_service, restaurant_service, "Queries restaurant info/menu from")
+    Rel(order_service, matching_service, "Sends order for driver assignment to")
+    Rel(matching_service, geo_db, "Queries for nearby drivers from")
+    Rel(matching_service, order_service, "Returns driver assignment to")
+    Rel(order_service, payment_service, "Initiates payment with")
+    Rel(order_service, notification_service, "Sends order updates via")
+
+    Rel(driver_location_service, geo_db, "Writes real-time location data to")
+    Rel(driver_location_service, map_service, "Uses for geocoding")
+    Rel(payment_service, payment_gateway, "Processes payments via")
+    Rel(notification_service, sms_gateway, "Sends SMS via")
+    Rel(notification_service, api_gateway, "Sends Push Notifications via")
+
+3. Component Diagram (Order Service)
+This diagram focuses on the internal components of the Order Service container, illustrating how it handles the creation and initial processing of a new food order.
+
+Description:
+
+API Controller: The entry point for the Order Service. It receives new order requests from the API Gateway.
+
+Order Validator: A component that checks the incoming order payload for correctness, availability (e.g., restaurant open, items in stock), and fraud.
+
+Order Persister: A component that saves the new order details into the Order Database.
+
+Matching Service Client: A component that initiates the driver assignment process by sending the new order to the Matching Service.
+
+Notification Publisher: A component that publishes events related to the order (e.g., "Order Placed", "Order Ready for Pickup") to a message queue or directly to the Notification Service for dispatch to relevant parties.
+
+Menu Service Client: A component that queries the Restaurant Service to validate menu items and prices.
+
+Mermaid.js Code:
+
+C4Component
+    title Component Diagram for Order Service
+
+    Container(api_gateway, "API Gateway")
+    Container_Ext(restaurant_service, "Restaurant Service")
+    Container_Ext(matching_service, "Matching Service")
+    Container_Ext(notification_service, "Notification Service")
+    ContainerDb(order_db, "Order DB", "MongoDB")
+
+    Container_Boundary(order_service, "Order Service") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives new order requests.")
+        Component(order_validator, "Order Validator", "Business Logic", "Validates order details and availability.")
+        Component(order_persister, "Order Persister", "MongoDB Client", "Saves new orders to the Order DB.")
+        Component(matching_client, "Matching Service Client", "gRPC Client", "Sends order to matching service.")
+        Component(notification_publisher, "Notification Publisher", "Kafka Producer", "Publishes order events.")
+        Component(menu_client, "Menu Service Client", "gRPC Client", "Queries menu for validation.")
+    }
+
+    Rel(api_gateway, api_controller, "Sends new order request to", "HTTPS")
+    Rel(api_controller, order_validator, "Passes order for validation to")
+    Rel(order_validator, menu_client, "Queries menu details from")
+    Rel(menu_client, restaurant_service, "Retrieves menu data from")
+    Rel(order_validator, order_persister, "Sends validated order to")
+    Rel(order_persister, order_db, "Writes new order to")
+    Rel(order_persister, matching_client, "Notifies matching service of new order")
+    Rel(matching_client, matching_service, "Sends order for driver assignment to")
+    Rel(order_persister, notification_publisher, "Publishes 'Order Placed' event to")
+    Rel(notification_publisher, notification_service, "Sends notification to")
+
+Architecture Decision Records
+ADR 1: Implement an Event-Driven Architecture for Real-time Updates and Decoupling
+Status: Proposed
+
+Context:
+A food delivery application involves many interacting components (customer app, restaurant portal, driver app, various backend services) and requires real-time updates for order status, driver location, and notifications. A purely synchronous, request-response architecture would lead to tight coupling, increased latency, and potential bottlenecks, especially during peak hours. Ensuring all parties are aware of critical state changes (e.g., "order picked up," "driver nearby") in real-time is crucial for a smooth user experience.
+
+Decision:
+We will adopt an Event-Driven Architecture (EDA) using a distributed message broker (e.g., Apache Kafka). Key state changes within services (e.g., Order Placed, Driver Accepted Order, Food Picked Up, Driver Arrived) will be published as events to dedicated topics in the message broker. Other interested services will subscribe to these topics and react asynchronously. This decouples services, allows for real-time processing, and enables features like real-time tracking and notifications.
+
+Consequences:
+
+Positive:
+
+Real-time Updates: Enables real-time communication between services, ensuring customers, restaurants, and drivers receive immediate updates on order and delivery status.
+
+Loose Coupling: Services operate independently, reacting to events without direct knowledge of other services' implementations. This improves maintainability and allows for independent deployment.
+
+Scalability: The message broker can buffer events, allowing producers and consumers to scale independently to handle varying loads. It prevents bottlenecks in one service from cascading to others.
+
+Resilience: If a consumer service goes down, messages remain in the queue and can be processed once it recovers, preventing data loss and ensuring eventual consistency.
+
+Extensibility: New features or services can easily be added by subscribing to existing events without modifying existing services.
+
+Negative:
+
+Increased Complexity: Event-driven systems introduce complexity in terms of event schema management, potential for event storms, ensuring idempotent consumers, and distributed tracing/debugging.
+
+Eventual Consistency: Data across different services becomes eventually consistent rather than immediately consistent. This requires careful design to handle scenarios where data might be temporarily out of sync.
+
+Operational Overhead: Managing and monitoring a distributed message broker (like Kafka) requires specialized expertise and infrastructure.
+
+Alternatives Considered:
+
+Pure Synchronous RESTful API Calls: All services communicate directly via REST APIs. This is simpler to implement initially but would lead to tight coupling, reduced scalability under high load, and cascading failures if a service is slow or unavailable. Real-time updates would require polling, which is inefficient. This was rejected due to scalability and reliability concerns.
+
+Polling-Based Updates: Clients constantly poll backend services for updates. While simpler to implement for clients, it's highly inefficient, wastes resources (network bandwidth, server CPU), and introduces significant latency for real-time changes. This was rejected for inefficiency and poor user experience.
+
+ADR 2: Real-time Driver Location Tracking and Geospatial Querying
+Status: Proposed
+
+Context:
+The efficiency of a food delivery app hinges on accurate, real-time tracking of driver locations. This data is critical for displaying driver position on the customer's map, calculating accurate Estimated Times of Arrival (ETAs), and most importantly, for the Matching Service to efficiently assign new orders to the most suitable nearby drivers. This involves a massive volume of high-frequency location updates (writes) and low-latency geospatial queries (reads). Traditional databases are not optimized for this type of workload.
+
+Decision:
+We will use a specialized, distributed Geospatial Database (e.g., Redis with geospatial extensions, or a custom solution built on a distributed key-value store like Cassandra with geohashing) as the primary store for real-time driver locations.
+
+High-Frequency Updates: The Driver App will send location updates to the Driver Location Service at a high frequency (e.g., every few seconds). The Driver Location Service will directly write these updates to the Geospatial Database.
+
+Low-Latency Queries: The Matching Service and the Order Service (for customer tracking) will perform low-latency spatial queries against this Geospatial Database (e.g., "find all available drivers within a 5km radius of restaurant X").
+
+Caching and TTL: Short Time-To-Live (TTL) values will be used for location data to ensure freshness and manage memory, as historical real-time locations are less critical than current ones.
+
+Consequences:
+
+Positive:
+
+High Performance: Provides extremely fast ingestion of driver location updates and ultra-low latency for geospatial queries, which is vital for real-time tracking and matching.
+
+Scalability: The distributed nature of these databases allows for horizontal scaling to accommodate a massive number of active drivers and concurrent location updates/queries.
+
+Native Geospatial Functions: Offers built-in support for complex spatial operations (e.g., GEOSEARCH, GEORADIUS), simplifying application logic.
+
+Negative:
+
+Operational Complexity: Deploying and managing a distributed geospatial database requires specialized expertise and adds to the system's operational overhead.
+
+Eventual Consistency (Acceptable): While high performance, these systems often lean towards eventual consistency. For real-time driver locations, this is generally an acceptable trade-off as the absolute latest position is more important than transactional consistency over a historical timeline.
+
+Memory/Storage Footprint: Storing and indexing a large number of live locations in memory can consume significant resources, necessitating careful optimization (e.g., using TTL).
+
+Alternatives Considered:
+
+Relational Database with Spatial Extensions (e.g., PostgreSQL with PostGIS): While powerful, a single relational database (even with extensions) would likely become a write and read bottleneck at the scale of a major food delivery app due to high-frequency updates and concurrent spatial queries. Rejected for potential scalability limitations.
+
+General-Purpose Key-Value Store without Geospatial Support: Storing locations as simple key-value pairs (e.g., driver_id: {lat, lon}). This would require the application layer to implement all geospatial query logic, which is complex, error-prone, and inefficient compared to native database support. Rejected for complexity and performance.
+
+ADR 3: Dynamic Driver-Order Matching Algorithm with Optimization
+Status: Proposed
+
+Context:
+The Matching Service is a central component for operational efficiency and customer satisfaction. It must quickly and optimally assign new food orders to available drivers. A simple "closest driver" approach is often insufficient, leading to suboptimal delivery times, inefficient driver utilization (e.g., sending a driver past another restaurant they could pick up from), and potentially lower driver earnings. The algorithm needs to consider multiple factors to optimize for various business goals.
+
+Decision:
+We will implement a multi-factor, dynamic matching algorithm, potentially leveraging machine learning, within the Matching Service. This algorithm will operate in several stages:
+
+Candidate Selection: Upon receiving a new order from the Order Service, the Matching Service will query the Geospatial Database (ADR 2) to identify a pool of eligible and available drivers within a reasonable radius of the restaurant.
+
+Driver Ranking & Scoring: Each candidate driver will be scored based on a comprehensive set of factors, including:
+
+Proximity: Distance and Estimated Time of Arrival (ETA) to the restaurant.
+
+Driver Status/Load: Current active orders, estimated time to complete current deliveries.
+
+Driver Rating/Preferences: Historical performance, acceptance rates, and potentially driver preferences (e.g., preferred zones).
+
+Order Batching Potential: Whether the driver is already on a route where this new order can be efficiently added as a "stacked" delivery.
+
+Real-time Traffic: Integration with the Third-Party Map Service for live traffic conditions to refine ETAs.
+
+Assignment Logic: The algorithm will select the optimal driver(s) based on an objective function that balances multiple goals: minimizing customer wait time, maximizing driver earnings, and ensuring fair distribution of orders. This might involve a real-time "auction" or an assignment optimization routine.
+
+Consequences:
+
+Positive:
+
+Optimized Delivery Times: Leads to faster and more reliable deliveries, significantly improving customer satisfaction.
+
+Improved Driver Utilization & Earnings: Efficiently batches orders and reduces idle time, leading to higher earnings for drivers.
+
+Operational Efficiency: Reduces manual intervention and improves overall system throughput.
+
+Adaptability: A machine learning-driven approach can adapt and improve over time with more data, allowing for continuous optimization.
+
+Scalability: The modular nature allows for independent scaling of geospatial queries and ranking/assignment logic.
+
+Negative:
+
+Algorithmic Complexity: Designing, implementing, and continually refining such a multi-factor algorithm (especially with ML) is a highly complex engineering task.
+
+Data Dependencies: Requires real-time access to accurate driver locations, order details, restaurant status, and dynamic traffic data.
+
+Computational Cost: Running sophisticated ranking and optimization algorithms for every new order can be computationally intensive, requiring significant processing power.
+
+Potential for Bias/Unintended Consequences: Care must be taken to ensure the algorithm is fair to both drivers and customers and doesn't introduce unintended biases.
+
+Alternatives Considered:
+
+Simple Closest Driver Matching: Assigning the order to the single closest available driver. This is easy to implement but highly sub-optimal. It ignores current driver load, potential for batching, and may lead to longer delivery times if a slightly further driver is more efficient. Rejected for sub-optimal performance and lack of sophistication.
+
+Manual Dispatch: Relying on human dispatchers to assign orders. This is not scalable beyond very small operations and is prone to human error and inefficiency. Rejected for lack of scalability and efficiency.
+
+ADR 4: Distributed Transaction Management with Saga Pattern for Order Lifecycle
+Status: Proposed
+
+Context:
+The lifecycle of a food order involves multiple independent microservices: Order Service (creates order), Payment Service (processes payment), Inventory Service (reserves items - if applicable, e.g., for pre-packed meals), Matching Service (assigns driver), and Notification Service (sends updates). Ensuring transactional consistency across these services (e.g., if payment fails, the order must be canceled and inventory released) without tightly coupling them is a significant challenge. Traditional two-phase commit (2PC) is generally avoided in microservices architectures due to performance and availability limitations.
+
+Decision:
+We will manage distributed transactions for the critical order lifecycle workflow using an orchestration-based Saga pattern. The Order Service will act as the Saga orchestrator.
+
+Initiation: When a customer places an order, the Order Service creates the order in a PENDING state in its local database and then sends a ProcessPaymentCommand to the Message Broker.
+
+Execution & Events:
+
+The Payment Service consumes the command, processes the payment (via Payment Gateway), updates its local database, and publishes a PaymentAuthorizedEvent or PaymentFailedEvent.
+
+Upon PaymentAuthorizedEvent, the Order Service sends AssignDriverCommand to the Matching Service.
+
+The Matching Service assigns a driver, updates its state, and publishes DriverAssignedEvent or DriverAssignmentFailedEvent.
+
+The Order Service continues to orchestrate steps based on events until the order reaches a terminal state (e.g., DELIVERED, CANCELED).
+
+Compensating Transactions: If any step fails (e.g., PaymentFailedEvent, DriverAssignmentFailedEvent), the Order Service orchestrator will initiate compensating transactions to reverse previously completed steps (e.g., RefundPaymentCommand, UnassignDriverCommand).
+
+Consequences:
+
+Positive:
+
+Loose Coupling: Services remain independent, only communicating via commands and events, leading to higher autonomy and resilience.
+
+Resilience & Fault Tolerance: The Saga pattern ensures business consistency even if intermediate steps fail, by executing compensating actions.
+
+Scalability: Asynchronous message-based communication allows services to scale independently and avoids blocking operations.
+
+Auditability: The sequence of events and commands provides a clear, auditable trail of the entire transaction flow.
+
+Negative:
+
+Increased Complexity: Designing, implementing, and debugging Sagas (especially orchestration-based) is significantly more complex than traditional local transactions.
+
+Eventual Consistency: The system will exhibit eventual consistency across services. While the Saga ensures overall business consistency, data in different services might be temporarily out of sync during the transaction.
+
+Monitoring & Observability: Requires sophisticated distributed tracing and logging to understand the flow and state of Sagas across multiple services.
+
+Developer Mindset Shift: Developers need to adopt an event-driven mindset and understand the implications of eventual consistency and compensating transactions.
+
+Alternatives Considered:
+
+Two-Phase Commit (2PC): While providing strong transactional consistency across distributed databases, 2PC tightly couples services, introduces significant performance overhead due to blocking operations, and can create a single point of failure. It is generally avoided in high-scale microservices architectures. Rejected for scalability and resilience issues.
+
+Direct Synchronous API Calls without Compensation: Services would call each other directly. If a downstream service fails, there is no automatic mechanism to roll back or compensate for already completed upstream actions, leading to inconsistent system states and data integrity issues. Rejected for lack of transactional integrity and resilience.
+
+Database-per-Service with Local Transactions Only: Relying solely on local ACID transactions within each service's database. This works for isolated operations but fails for cross-service business processes where global consistency is required. Rejected for inability to maintain consistency across distributed business workflows.
