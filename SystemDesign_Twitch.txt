@@ -1,0 +1,311 @@
+System Design for: 'Twitch'
+This document outlines the architectural design for a scalable, real-time live-streaming platform like Twitch. The system is designed to handle a massive number of concurrent live video streams, a high volume of viewers, real-time chat, and a large-scale, low-latency content delivery system, ensuring high availability and a quality user experience.
+
+C4 Model Diagrams
+1. System Context Diagram
+The System Context diagram provides a high-level view of the Twitch system and its interactions with external users and systems. It shows the core platform interacting with streamers, viewers, and external services for game data and payments.
+
+Description:
+
+Streamer: A person who broadcasts live video content, typically of video games, to an audience.
+
+Viewer: A person who watches live or pre-recorded streams, interacts with chat, and subscribes to channels.
+
+Twitch System (System in Scope): The central platform that facilitates all live video streaming, content delivery, and viewer interaction.
+
+External Game Data Service: A third-party system that provides information about games being played, such as metadata and game titles.
+
+Third-Party Payment Gateway: An external service that securely processes payments for subscriptions, donations, and bits.
+
+Mermaid.js Code:
+
+C4Context
+    title System Context Diagram for Twitch
+
+    Person(streamer, "Streamer", "Broadcasts live video content.")
+    Person(viewer, "Viewer", "Watches streams and interacts with chat.")
+
+    System(twitch_system, "Twitch", "The core system for live-streaming.")
+
+    System_Ext(game_data_service, "External Game Data Service", "Provides metadata about video games.")
+    System_Ext(payment_gateway, "Third-Party Payment Gateway", "Processes payments for subscriptions and donations.")
+
+    Rel(streamer, twitch_system, "Broadcasts video stream to")
+    Rel(viewer, twitch_system, "Watches live/VOD content from")
+    Rel(twitch_system, game_data_service, "Queries game info from")
+    Rel(twitch_system, payment_gateway, "Processes payments via")
+
+2. Container Diagram
+This diagram zooms into the Twitch system, showing the major independently deployable components. The design is a distributed, event-driven architecture with specialized services for media ingestion, processing, and delivery.
+
+Description:
+
+Client Application (Desktop/Mobile/Web): The user-facing application used by streamers to broadcast and by viewers to watch streams.
+
+API Gateway: The single entry point for all client requests, handling authentication and routing to backend services.
+
+Ingestion Service: A high-throughput service that accepts live video streams from streamers. It is designed to be geographically distributed to minimize latency.
+
+Transcoding Service: A powerful, distributed service that transcodes incoming video streams into multiple resolutions and bitrates to support various viewer devices and network conditions.
+
+CDN (Content Delivery Network) Service: A global network of edge servers that cache and deliver live-stream fragments to viewers with minimal latency.
+
+Stream Service: Manages the metadata for a live stream, such as stream key, title, and game category.
+
+Chat Service: A high-volume, real-time service that handles all in-stream chat messages.
+
+User Service: Manages user profiles, authentication, and follower/subscription data.
+
+Video-on-Demand (VOD) Service: Handles the storage and playback of recorded live streams.
+
+Video Blob Store: A highly scalable object storage system (e.g., AWS S3) for storing recorded VOD content.
+
+Message Broker: A distributed message queue (e.g., Kafka) that decouples services and handles the high-volume event stream of live data.
+
+Mermaid.js Code:
+
+C4Container
+    title Container Diagram for Twitch
+
+    Person(streamer, "Streamer")
+    Person(viewer, "Viewer")
+
+    System_Boundary(twitch_system_boundary, "Twitch System") {
+        Container(client, "Client Application", "Desktop, Mobile, Web App", "The user-facing application for streaming and viewing.")
+        Container(api_gateway, "API Gateway", "Go/NGINX", "Routes API calls and handles auth.")
+
+        Container(ingestion_service, "Ingestion Service", "C++", "Accepts live video streams from streamers.")
+        Container(transcoding_service, "Transcoding Service", "Custom/FFmpeg", "Converts streams to multiple resolutions/bitrates.")
+        Container(stream_service, "Stream Service", "Java", "Manages stream metadata and state.")
+        Container(chat_service, "Chat Service", "Node.js", "Handles real-time chat messages.")
+        Container(user_service, "User Service", "Java", "Manages user profiles and accounts.")
+        Container(vod_service, "VOD Service", "Python", "Handles playback of recorded streams.")
+        Container_Ext(cdn, "CDN Service", "Global Network", "Delivers live and VOD content to viewers.")
+
+        ContainerDb(video_blob_store, "Video Blob Store", "AWS S3/GCS", "Stores raw and transcoded video files.")
+        ContainerDb(database, "Database", "Cassandra", "Stores user, stream, and chat metadata.")
+        Container(message_broker, "Message Broker", "Kafka", "Decouples services and handles event streams.")
+    }
+
+    Rel(streamer, client, "Uses to broadcast")
+    Rel(client, ingestion_service, "Sends video stream to", "RTMP/SRT")
+    Rel(client, api_gateway, "Makes API calls to", "HTTPS")
+    Rel(viewer, client, "Uses to watch")
+
+    Rel(ingestion_service, transcoding_service, "Sends raw stream to", "Async")
+    Rel(transcoding_service, cdn, "Publishes transcoded streams to")
+    Rel(transcoding_service, video_blob_store, "Archives stream to")
+    Rel(stream_service, message_broker, "Publishes stream events to")
+    Rel(chat_service, database, "Stores chat history in")
+    Rel(chat_service, message_broker, "Publishes chat messages to")
+    Rel(vod_service, video_blob_store, "Reads VOD content from")
+    Rel(client, cdn, "Fetches live stream from", "HTTP-FLV/HLS/DASH")
+
+3. Component Diagram (Ingestion Service)
+This diagram focuses on the internal components of the Ingestion Service container, illustrating how it receives and processes a live-stream from a streamer.
+
+Description:
+
+API Controller: The entry point for the Ingestion Service. It receives the stream key and initial connection request.
+
+Authentication & Authorization: Verifies the streamer's credentials using the provided stream key.
+
+Stream Receiver: A high-performance component that accepts the raw RTMP or SRT video stream from the streamer.
+
+Media Buffer: A temporary, in-memory buffer that holds a segment of the incoming stream.
+
+Media Publisher: A component that publishes the raw stream to the next stage in the pipeline, which is the Transcoding Service, via an internal message queue or stream.
+
+Monitoring Component: Tracks stream health, bitrate, and latency, reporting metrics to a central monitoring system.
+
+Mermaid.js Code:
+
+C4Component
+    title Component Diagram for Ingestion Service
+
+    Container(client, "Client Application", "Streamer's PC")
+    Container_Ext(transcoding_service, "Transcoding Service")
+    Container_Ext(user_service, "User Service", "Auth Service")
+
+    Container_Boundary(ingestion_service, "Ingestion Service") {
+        Component(api_controller, "API Controller", "TCP Listener", "Receives stream connection requests.")
+        Component(auth_component, "Auth & Auth Component", "Logic Component", "Verifies stream key and user.")
+        Component(stream_receiver, "Stream Receiver", "RTMP/SRT Server", "Ingests the raw video stream.")
+        Component(media_buffer, "Media Buffer", "In-memory Buffer", "Temporarily stores stream segments.")
+        Component(media_publisher, "Media Publisher", "Message Producer", "Sends buffered segments to the transcoder.")
+        Component(monitoring, "Monitoring Component", "Metric Reporter", "Monitors stream health and metrics.")
+    }
+
+    Rel(client, api_controller, "Establishes connection to")
+    Rel(api_controller, auth_component, "Sends stream key for verification to")
+    Rel(auth_component, user_service, "Queries user credentials from")
+    Rel(api_controller, stream_receiver, "Redirects stream to")
+    Rel(stream_receiver, media_buffer, "Feeds raw stream segments to")
+    Rel(media_buffer, media_publisher, "Pulls segments from")
+    Rel(media_publisher, transcoding_service, "Publishes stream to", "Internal Stream")
+    Rel(media_buffer, monitoring, "Provides stream metrics to")
+
+Architecture Decision Records
+ADR 1: Use a Distributed Transcoding Pipeline for Real-Time Adaptability
+Status: Proposed
+
+Context:
+A core challenge for a live-streaming platform is delivering a high-quality video stream to a diverse set of devices and network conditions. A streamer uploads a single, high-bitrate stream, but a viewer on a mobile device on a slow network cannot consume this stream. Forcing a single format would lead to buffering and a poor user experience. Therefore, the live stream must be converted into multiple formats, a process known as transcoding. This process must be real-time and highly scalable to handle millions of simultaneous streams.
+
+Decision:
+We will implement a distributed transcoding pipeline that operates immediately after a live stream is ingested. The raw stream will be sent to a fleet of distributed transcoding servers. Each server will be responsible for converting the stream into various resolutions and bitrates (e.g., 1080p, 720p, 480p, 360p). These transcoded streams will then be packaged into small, chunked files (e.g., using HLS or MPEG-DASH) and pushed to a global CDN for low-latency delivery.
+
+Consequences:
+
+Positive:
+
+Adaptive Streaming: Viewers can seamlessly switch between resolutions based on their network conditions and device capabilities, eliminating buffering and ensuring a consistent experience.
+
+Scalability: The transcoding service can be scaled independently of other services. We can add more transcoding nodes to handle peak streaming events.
+
+Resilience: The pipeline is designed to be fault-tolerant. If one transcoding node fails, its workload can be redistributed to other nodes.
+
+Negative:
+
+High Computational Cost: Transcoding is a CPU-intensive process, requiring a massive amount of computational resources. This is a significant operational cost.
+
+Increased Complexity: The transcoding pipeline itself is complex to manage, requiring sophisticated logic for load balancing, error handling, and quality control.
+
+Increased Latency: The transcoding process introduces a small but unavoidable latency to the live stream. While modern techniques can keep this minimal (2-5 seconds), it is a trade-off.
+
+Alternatives Considered:
+
+Client-Side Transcoding: Having the streamer's client application transcode the video into multiple bitrates before sending it. This shifts the computational burden to the streamer but is unreliable, as not all clients have the necessary processing power or consistent network upload speed. This was rejected due to its lack of reliability and dependence on user hardware.
+
+Just-in-Time Transcoding: Storing the raw stream and transcoding it on-demand as viewers request different qualities. This is not feasible for a live-stream platform, as it would introduce unacceptable latency and require an immense amount of I/O for real-time delivery. This was rejected for its high latency.
+
+ADR 2: Live Stream Delivery Protocol for Viewers (HLS vs. DASH vs. LL-HLS)
+Status: Proposed
+
+Context:
+After transcoding, the video stream needs to be delivered to millions of concurrent viewers across a multitude of devices and network conditions. The choice of delivery protocol significantly impacts latency, compatibility, and the ability to scale. The most common protocols for adaptive bitrate streaming are HLS (HTTP Live Streaming) and MPEG-DASH. Low-latency variants of these, such as LL-HLS, are also emerging.
+
+HLS (HTTP Live Streaming): Apple's proprietary protocol, now an open standard, that segments video into small MPEG-2 Transport Stream (TS) or fragmented MP4 (fMP4) files and delivers them over HTTP. Widely supported by iOS, macOS, and many browsers.
+
+MPEG-DASH (Dynamic Adaptive Streaming over HTTP): An open international standard that also segments video into fMP4 files. Supported by Android, various browsers, and smart TVs.
+
+LL-HLS (Low-Latency HLS) / LL-DASH: Newer extensions to HLS and DASH that aim to reduce end-to-end latency to sub-second levels by using smaller segments and new delivery mechanisms (e.g., HTTP/2 Push).
+
+Decision:
+We will primarily use HLS for content delivery, while also supporting MPEG-DASH for broader device compatibility, especially on Android and non-Apple ecosystems. To address the critical requirement of low latency for live streaming, we will aggressively pursue and implement Low-Latency HLS (LL-HLS) as the preferred delivery mechanism for modern clients, leveraging HTTP/2 or HTTP/3 for chunked transfer encoding and segment pre-fetching. Standard HLS/DASH will serve as a fallback for older clients or networks where LL-HLS is not viable.
+
+Consequences:
+
+Positive:
+
+Broad Compatibility: Using both HLS and DASH ensures coverage across virtually all modern devices and platforms.
+
+Adaptive Bitrate Streaming: Both protocols inherently support adaptive streaming, providing a smooth viewing experience regardless of network conditions.
+
+Low Latency: LL-HLS specifically targets sub-second latency, crucial for interactive live experiences (e.g., chat interaction, e-sports).
+
+CDN Integration: HTTP-based delivery is highly compatible with existing CDN infrastructure, allowing for global scalability and reduced load on origin servers.
+
+Negative:
+
+Increased Storage & Encoding Overhead: Maintaining multiple sets of segments (HLS and DASH, plus different resolutions/bitrates) for both protocols requires more storage and encoding processing.
+
+Complexity in Management: Managing streams across two primary protocols (HLS/DASH) and their low-latency variants adds operational complexity to the CDN and client-side player logic.
+
+Still Not "Instant": Even with LL-HLS, there's always some inherent latency (typically 1-3 seconds) due to segment-based delivery, which is a trade-off for scalability and adaptive bitrate.
+
+Alternatives Considered:
+
+RTMP (Real-Time Messaging Protocol): While widely used for ingestion (streamer to server), RTMP is not well-suited for mass audience distribution due to its lack of native adaptive bitrate support, poor firewall traversal, and declining client-side playback support in browsers. Rejected for distribution to viewers.
+
+WebRTC: Offers very low latency (sub-200ms) and true peer-to-peer capabilities. However, scaling WebRTC for millions of simultaneous viewers is extremely complex and computationally expensive, typically requiring SFU/MCU architectures at a massive scale which introduce their own challenges. It's better suited for smaller, interactive group calls than one-to-many broadcasting at Twitch's scale. Rejected for distribution to a massive audience.
+
+ADR 3: Real-time Chat Architecture for High Concurrency and Low Latency
+Status: Accepted
+
+Context:
+The live chat feature is integral to the Twitch experience, fostering community interaction and engagement during streams. This component must handle an extremely high volume of messages (millions per second during popular events) with very low latency, delivering messages to all active viewers of a channel in real-time. It also needs to support moderation, message persistence, and emoticons.
+
+Decision:
+We will implement a distributed, publish-subscribe (pub/sub) chat architecture using a Message Broker (e.g., Kafka) as the central nervous system.
+
+Client-Server Communication: WebSockets will be used for persistent, bi-directional communication between client applications (viewer/streamer) and dedicated Chat Service instances.
+
+Message Ingestion: When a client sends a message, the Chat Service instance receives it, performs basic validation/moderation, and publishes it to a Kafka topic.
+
+Message Fan-out: Other Chat Service instances (or dedicated "chat broadcasters") subscribe to relevant Kafka topics (e.g., one topic per channel or region). Upon receiving a message, they fan it out via WebSockets to all connected viewers for that channel.
+
+Persistence: Messages are also asynchronously written to a persistent data store (e.g., Cassandra) for chat history and moderation logs.
+
+Consequences:
+
+Positive:
+
+Massive Scalability: Kafka provides high-throughput, fault-tolerant message queuing, enabling the system to handle millions of messages per second. The Chat Service instances can be scaled horizontally.
+
+Low Latency: WebSockets provide real-time, persistent connections, ensuring messages appear almost instantaneously for viewers.
+
+Decoupling: The Message Broker decouples message producers (clients/Chat Service) from consumers (other Chat Service instances, persistence, analytics), improving system resilience and flexibility.
+
+Event-Driven: Naturally supports an event-driven architecture, making it easy to integrate other services (e.g., moderation, analytics, notification) as Kafka consumers.
+
+Negative:
+
+Operational Complexity: Managing and scaling a Kafka cluster and a fleet of WebSocket servers is complex, requiring significant operational expertise.
+
+State Management: While chat messages are transient, managing active WebSocket connections and their associated user/channel states requires careful design for load balancing and failover.
+
+Message Ordering Challenges: Ensuring strict global message ordering across highly distributed systems can be tricky, though Kafka's partition-level ordering helps. For practical chat, eventual consistency with per-channel ordering is often sufficient.
+
+Alternatives Considered:
+
+Polling/Long Polling for Chat: Clients repeatedly asking the server for new messages. This is highly inefficient, resource-intensive for both client and server, and introduces significant latency. Rejected due to poor scalability and high latency for real-time chat.
+
+Relational Database for Real-time Chat: Continuously writing and querying a relational database for new chat messages would quickly become a severe performance bottleneck due to high write/read contention. Rejected due to inability to scale for real-time, high-volume operations.
+
+Custom TCP/UDP Sockets: While providing ultimate control over latency, building a custom socket-based solution from scratch is immensely complex, difficult to maintain, and lacks the inherent features and ecosystem support of WebSockets or a robust message broker. Rejected for high development and maintenance cost.
+
+ADR 4: VOD Storage and Retrieval Strategy
+Status: Proposed
+
+Context:
+Beyond live streaming, Twitch offers Video-on-Demand (VOD) services, allowing viewers to watch past broadcasts. This requires efficient and cost-effective storage for vast amounts of video data and a performant retrieval mechanism for playback. VODs can range from a few minutes to many hours, and popularity can vary widely, necessitating a flexible storage solution.
+
+Decision:
+We will use a tiered storage strategy leveraging a Cloud Object Storage solution (e.g., AWS S3, Google Cloud Storage) as the primary Video Blob Store.
+
+Immediate Archive: Raw or transcoded segments of live streams will be immediately archived to a highly available, durable object storage bucket. This ensures that a VOD is available shortly after a stream ends.
+
+Adaptive Bitrate VOD: The transcoded segments (HLS/DASH) already generated for live streaming will also be stored for VOD playback, enabling adaptive bitrate viewing for VODs.
+
+Long-Term Archiving: Less frequently accessed VODs (e.g., older streams, less popular content) will be transitioned to colder storage tiers within the object storage service (e.g., S3 Glacier, GCS Archive) to optimize costs.
+
+CDN for Playback: All VOD content will be served to viewers via the global CDN Service to ensure low-latency playback and reduce load on the origin storage.
+
+Consequences:
+
+Positive:
+
+Massive Scalability & Durability: Cloud object storage provides virtually unlimited storage capacity with extremely high durability (e.g., 99.999999999% durability).
+
+Cost-Effective Tiering: The ability to transition data to colder storage tiers significantly reduces long-term storage costs for less popular content.
+
+High Availability: Object storage services are designed for high availability, ensuring VODs are accessible whenever requested.
+
+Simplified Management: Offloads the complexities of managing physical storage infrastructure to a cloud provider.
+
+Negative:
+
+Ingestion Costs: Storing vast amounts of data incurs costs, and frequent data ingestion can add up.
+
+Retrieval Costs (Cold Tiers): While cold storage is cheap, retrieving data from these tiers can incur higher costs and potentially introduce retrieval delays, which needs to be considered for VOD access patterns.
+
+Dependency on Cloud Provider: The system becomes tightly coupled to the chosen cloud provider's storage services.
+
+Security & Access Control: Proper configuration of access policies (IAM roles, bucket policies) is crucial to prevent unauthorized access to video content.
+
+Alternatives Considered:
+
+Local NAS/SAN Storage: Using on-premise Network Attached Storage (NAS) or Storage Area Network (SAN) solutions. While offering direct control, this would be prohibitively expensive to scale to Twitch's video volume, difficult to manage globally, and prone to single points of failure. Rejected for scalability, cost, and operational complexity.
+
+Database Binary Large Objects (BLOBs): Storing video files directly within a database. This is generally a bad practice for large binary data, as it severely impacts database performance, complicates backups, and is not cost-effective for vast media archives. Rejected for performance and scalability issues.
