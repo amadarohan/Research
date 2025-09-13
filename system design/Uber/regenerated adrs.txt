@@ -1,0 +1,172 @@
+Based on the Uber system design document you provided, I will analyze the existing Architecture Decision Records (ADRs) and propose new ones to address any missing non-functional requirements.
+
+The provided ADRs are highly focused on **scalability**, **performance**, and **efficiency**. For example, ADR 1 advocates for a specialized geospatial database to handle high-frequency location updates and low-latency spatial queries. ADR 2 discusses using WebSockets for real-time, bi-directional communication, crucial for driver-rider interactions. ADR 3 proposes a multi-stage matching algorithm to optimize for speed and efficiency. Finally, ADR 4 outlines a data partitioning strategy to ensure low-latency access and high availability for core data.
+
+However, a complete system design for a global ride-sharing platform also needs to consider non-functional requirements that are not explicitly addressed in these ADRs. The current document lacks a formal strategy for **localization** (crucial for global expansion), **upgradability** to ensure safe and continuous feature releases, and **privacy** and **security** to protect sensitive user and location data.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Geospatial Database for Real-time Location Tracking and Matching
+
+* **Status:** Proposed
+* **Context:** Uber's core functionality relies on high-frequency location updates and ultra-low-latency spatial queries. A traditional relational database is not optimized for this type of workload.
+* **Decision:** We will use a specialized **Geospatial Database** (e.g., Redis with geospatial capabilities) to track real-time driver locations. This database is separate from the main ride store to handle the high volume of writes and reads for location data without affecting other services.
+* **Consequences:**
+    * **Positive:** Provides extremely fast lookups for nearby drivers, ensures scalability for a massive number of location updates, and simplifies application logic with native geospatial queries.
+    * **Negative:** Real-time location data can be eventually consistent, and managing a specialized, distributed database adds operational complexity.
+
+* **Farsi Version - ADR 1: استفاده از پایگاه داده مکانی-فضایی برای ردیابی موقعیت مکانی و تطبیق در زمان واقعی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** عملکرد اصلی سیستم Uber بر توانایی انجام به‌روزرسانی‌های موقعیت مکانی با فرکانس بالا و پرس‌وجوهای مکانی-فضایی با تأخیر بسیار پایین متکی است. یک پایگاه داده رابطه‌ای سنتی برای این نوع حجم کاری بهینه نیست.
+    * **تصمیم:** ما از یک **پایگاه داده مکانی-فضایی** تخصصی (مانند Redis با قابلیت‌های مکانی-فضایی) برای ردیابی موقعیت مکانی رانندگان در زمان واقعی استفاده خواهیم کرد. این پایگاه داده از فروشگاه اصلی سفر جدا خواهد بود تا حجم بالای نوشتن و خواندن داده‌های موقعیت مکانی را بدون تأثیر بر سایر سرویس‌ها مدیریت کند.
+    * **پیامدها:**
+        * **مثبت:** جستجوهای بسیار سریعی را برای رانندگان نزدیک فراهم می‌کند، مقیاس‌پذیری برای تعداد زیادی از به‌روزرسانی‌های موقعیت مکانی را تضمین می‌کند و منطق برنامه را با پرس‌وجوهای مکانی-فضایی بومی ساده می‌سازد.
+        * **منفی:** داده‌های موقعیت مکانی در زمان واقعی می‌توانند در نهایت سازگار شوند و مدیریت یک پایگاه داده تخصصی و توزیع‌شده پیچیدگی عملیاتی را افزایش می‌دهد.
+
+---
+
+#### ADR 2: Real-time Communication Protocol for Driver-Rider Interaction and Notifications
+
+* **Status:** Proposed
+* **Context:** Uber requires instantaneous, bi-directional communication between its mobile clients and backend services. Traditional HTTP/REST APIs are inefficient for continuous, low-latency updates.
+* **Decision:** We will use **WebSockets** for persistent, bi-directional, real-time communication between clients and the backend. For critical, short-burst notifications (e.g., "ride accepted"), we will also use push notification services like FCM or APNS.
+* **Consequences:**
+    * **Positive:** Drastically reduces latency and provides a full-duplex communication channel, leading to a much better real-time user experience. It also uses network and server resources more efficiently.
+    * **Negative:** WebSockets are stateful, adding complexity for load balancing and session management, and can present scaling challenges.
+
+* **Farsi Version - ADR 2: پروتکل ارتباطی در زمان واقعی برای تعامل راننده-مسافر و اعلان‌ها**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** Uber به ارتباط فوری و دوطرفه بین برنامه‌های موبایل مشتری (مسافر و راننده) و سرویس‌های بک‌اند برای تعاملات در زمان واقعی مختلف نیاز دارد. APIهای HTTP/REST سنتی برای ارتباط مداوم، دوطرفه و با تأخیر پایین ناکارآمد هستند.
+    * **تصمیم:** ما از **WebSockets** برای ارتباط پایدار، دوطرفه و در زمان واقعی بین برنامه‌های مشتری و سرویس‌های بک‌اند استفاده خواهیم کرد. این کار به‌روزرسانی‌ها را با تأخیر پایین و بدون نیاز به نظرسنجی مداوم امکان‌پذیر می‌سازد. برای اعلان‌های حیاتی و کوتاه، سرویس‌های اعلان پوش (مانند FCM یا APNS) نیز به کار گرفته خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** تأخیر را به شدت کاهش می‌دهد و یک کانال ارتباطی دوطرفه کامل فراهم می‌کند که منجر به تجربه کاربری بسیار بهتری می‌شود. همچنین از منابع شبکه و سرور به صورت کارآمدتری استفاده می‌کند.
+        * **منفی:** WebSockets حالت‌دار هستند، که پیچیدگی را برای توزیع بار و مدیریت نشست اضافه می‌کند و می‌تواند چالش‌های مقیاس‌پذیری را به همراه داشته باشد.
+
+---
+
+#### ADR 3: Architecture for the Ride Matching Algorithm
+
+* **Status:** Proposed
+* **Context:** The Matching Service is critical for rider wait times and platform efficiency. A simple "nearest driver" approach is insufficient and does not account for other important factors.
+* **Decision:** The Matching Algorithm will use a multi-stage approach. First, a **Geospatial Query Engine** will quickly find a pool of eligible drivers. Next, a dedicated **Driver Ranker** will use a machine learning model to score these drivers based on factors like ETA and rating. Finally, a real-time assignment mechanism will select the best-fit driver.
+* **Consequences:**
+    * **Positive:** The multi-stage approach is highly efficient and quick, allows for the optimization of various business metrics, and is scalable due to its modular architecture.
+    * **Negative:** Designing and training a machine learning model adds significant complexity and computational cost, and the model's effectiveness depends on fresh, accurate data.
+
+* **Farsi Version - ADR 3: معماری برای الگوریتم تطبیق سفر**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** سرویس تطبیق برای زمان انتظار مسافر و کارایی پلتفرم بسیار حیاتی است. یک رویکرد ساده "نزدیک‌ترین راننده" ناکافی است و عوامل مهم دیگر را در نظر نمی‌گیرد.
+    * **تصمیم:** الگوریتم تطبیق از یک رویکرد چند مرحله‌ای استفاده خواهد کرد. ابتدا، یک **موتور پرس‌وجوی مکانی-فضایی** به سرعت مجموعه‌ای از رانندگان واجد شرایط را پیدا می‌کند. سپس، یک **رتبه‌بند راننده** اختصاصی از یک مدل یادگیری ماشین برای امتیازدهی به این رانندگان بر اساس عواملی مانند ETA و امتیاز استفاده خواهد کرد. در نهایت، یک مکانیسم تخصیص در زمان واقعی بهترین راننده را انتخاب خواهد کرد.
+    * **پیامدها:**
+        * **مثبت:** رویکرد چند مرحله‌ای بسیار کارآمد و سریع است، امکان بهینه‌سازی معیارهای تجاری مختلف را فراهم می‌کند و به دلیل معماری ماژولار خود مقیاس‌پذیر است.
+        * **منفی:** طراحی و آموزش یک مدل یادگیری ماشین پیچیدگی و هزینه محاسباتی قابل توجهی را اضافه می‌کند و کارایی مدل به داده‌های تازه و دقیق بستگی دارد.
+
+---
+
+#### ADR 4: Data Partitioning and Sharding Strategy for Core Services
+
+* **Status:** Proposed
+* **Context:** Uber processes a vast amount of data. Without effective sharding, a single database instance would quickly become a bottleneck for both storage and throughput.
+* **Decision:** We will implement a sharding strategy for both the User Service and Trip Service data. User data will be sharded by `user_id`, and trip data will be sharded by a combination of `trip_id` and potentially `region_id`. Each shard will be a fully functional database instance with its own replicas.
+* **Consequences:**
+    * **Positive:** Allows the system to scale horizontally to accommodate massive growth, improves availability and fault tolerance, and spreads the load across multiple database instances.
+    * **Negative:** Sharding introduces significant operational and development complexity, makes cross-shard queries much more difficult, and maintaining consistency across shards is challenging.
+
+* **Farsi Version - ADR 4: استراتژی پارتیشن‌بندی و تقسیم داده‌ها برای سرویس‌های اصلی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** پلتفرم Uber حجم عظیمی از داده‌ها را پردازش می‌کند. بدون تقسیم‌بندی مؤثر، یک نمونه پایگاه داده واحد به سرعت به یک گلوگاه برای هم ذخیره‌سازی و هم توان عملیاتی تبدیل خواهد شد.
+    * **تصمیم:** ما یک استراتژی تقسیم‌بندی را برای داده‌های سرویس کاربر و سرویس سفر پیاده‌سازی خواهیم کرد. داده‌های کاربر عمدتاً بر اساس `user_id` و داده‌های سفر بر اساس ترکیبی از `trip_id` و احتمالاً `region_id` تقسیم خواهند شد. هر قطعه یک نمونه پایگاه داده کاملاً کاربردی با مجموعه‌ای از نمونه‌های تکراری برای افزونگی و مقیاس‌گذاری خواندن خواهد بود.
+    * **پیامدها:**
+        * **مثبت:** به سیستم اجازه می‌دهد به صورت افقی برای پذیرش رشد عظیم در کاربران و سفرها مقیاس‌پذیر شود، دسترسی و تحمل خطا را بهبود می‌بخشد و بار را در چندین نمونه پایگاه داده توزیع می‌کند.
+        * **منفی:** تقسیم‌بندی پیچیدگی عملیاتی و توسعه قابل توجهی را معرفی می‌کند، پرس‌وجوهایی که چندین قطعه را درگیر می‌کنند بسیار دشوارتر می‌شوند و حفظ سازگاری در میان قطعات چالش‌برانگیز است.
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more comprehensive design for a global ride-sharing platform, the following ADRs are proposed to cover **privacy**, **security**, and **localization**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** Uber handles highly sensitive user and location data, including real-time GPS coordinates, ride history, and payment information. Protecting this data is not only a legal requirement but is essential for maintaining user trust and brand reputation. The current design mentions services handling data but lacks a formal architectural decision on how to secure it.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach throughout the system. This involves integrating privacy and security controls into every stage of the system development lifecycle. Key practices will include:
+    * **Data Encryption:** All sensitive data will be encrypted both in transit (using HTTPS/TLS for all client-to-server and inter-service communication) and at rest (in our databases and logs).
+    * **Data Minimization:** We will only collect and store data that is absolutely necessary for the functioning of the business, and we will have clear data retention policies.
+    * **Access Control:** The principle of least privilege will be enforced across all services.
+    * **Anonymization:** For analytics and machine learning tasks, personally identifiable information (PII) will be removed or obfuscated to protect user privacy.
+    * **Audit Logging:** All access to and modifications of sensitive data will be logged in an immutable audit trail for regulatory compliance and forensic analysis.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of data breaches and misuse, ensures regulatory compliance, and builds user trust.
+    * **Negative:** Adds a new layer of complexity to the system and may introduce a minor performance overhead for encryption/decryption, which must be carefully managed in a low-latency environment.
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** Uber داده‌های کاربر و موقعیت مکانی بسیار حساسی را مدیریت می‌کند، از جمله مختصات GPS در زمان واقعی، سابقه سفر و اطلاعات پرداخت. حفاظت از این داده‌ها نه تنها یک الزام قانونی است، بلکه برای حفظ اعتماد کاربر و اعتبار برند نیز اساسی است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد، اما فاقد تصمیم معماری رسمی در مورد نحوه ایمن‌سازی آن است.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را در سراسر سیستم اتخاذ خواهیم کرد. این شامل یکپارچه‌سازی کنترل‌های حریم خصوصی و امنیتی در هر مرحله از چرخه عمر توسعه سیستم است. اقدامات کلیدی شامل:
+        * **رمزنگاری داده‌ها:** تمام داده‌های حساس در حال انتقال (با استفاده از HTTPS/TLS برای تمام ارتباطات مشتری-سرور و بین سرویس‌ها) و در حال سکون (در پایگاه‌های داده و گزارش‌های ما) رمزنگاری خواهند شد.
+        * **به حداقل رساندن داده‌ها:** ما فقط داده‌هایی را جمع‌آوری و ذخیره خواهیم کرد که برای عملکرد کسب‌وکار کاملاً ضروری هستند، و سیاست‌های نگهداری داده واضحی خواهیم داشت.
+        * **کنترل دسترسی:** اصل حداقل دسترسی در تمام سرویس‌ها اجرا خواهد شد.
+        * **ناشناس‌سازی:** برای کارهای تحلیلی و یادگیری ماشین، اطلاعات قابل شناسایی شخصی (PII) حذف یا پنهان خواهند شد تا از حریم خصوصی کاربر محافظت شود.
+        * **ثبت حسابرسی:** تمام دسترسی‌ها و تغییرات در داده‌های حساس در یک مسیر حسابرسی تغییرناپذیر برای انطباق با مقررات و تحلیل‌های قانونی ثبت خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** ریسک نقض داده‌ها و سوءاستفاده را به شدت کاهش می‌دهد، انطباق با مقررات را تضمین می‌کند و اعتماد کاربر را می‌سازد.
+        * **منفی:** یک لایه پیچیدگی جدید به سیستم اضافه می‌کند و ممکن است یک سربار عملکردی جزئی برای رمزنگاری/رمزگشایی ایجاد کند که باید به دقت در یک محیط با تأخیر پایین مدیریت شود.
+
+---
+
+#### ADR 6: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** To become a truly global platform, Uber must cater to users in hundreds of countries. This requires supporting multiple languages, currencies, and regional formats (e.g., distance in miles vs. kilometers). The current design does not address a formal strategy for **localization** and **internationalization**.
+* **Decision:** We will design the application with **internationalization (I18n)** as a core principle. This includes:
+    * **Externalized Content:** All user-facing text, including UI labels, notifications, and menu items, will be stored in external resource files and databases that support multiple languages.
+    * **Client-driven Locale:** The client application will automatically detect the user's preferred language and regional settings and pass this information to the backend in all API requests.
+    * **Centralized Formatting:** A dedicated service will handle all locale-specific formatting for numbers, currencies, and dates/times.
+    * **Locale-Aware Matching:** The Matching Service will be designed to handle and present prices and distances in the user's preferred currency and units.
+* **Consequences:**
+    * **Positive:** The platform can be easily and quickly adapted for new markets, which is crucial for business expansion. A localized experience significantly improves user engagement and satisfaction.
+    * **Negative:** Adds some initial architectural and development complexity and requires a dedicated process for managing translations and regional content.
+
+* **Farsi Version - ADR 6: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** برای تبدیل شدن به یک پلتفرم واقعاً جهانی، Uber باید به کاربران در صدها کشور خدمات ارائه دهد. این امر نیازمند پشتیبانی از چندین زبان، ارز و فرمت‌های منطقه‌ای (مانند فاصله به مایل در مقابل کیلومتر) است. طراحی فعلی یک استراتژی رسمی برای **محلی‌سازی** و **بین‌المللی‌سازی** را در نظر نگرفته است.
+    * **تصمیم:** ما برنامه را با **بین‌المللی‌سازی (I18n)** به عنوان یک اصل اصلی طراحی خواهیم کرد. این شامل:
+        * **محتوای بیرونی:** تمام متن‌های قابل مشاهده برای کاربر، از جمله برچسب‌های رابط کاربری، اعلان‌ها و آیتم‌های منو، در فایل‌های منابع خارجی و پایگاه‌های داده‌ای که از چندین زبان پشتیبانی می‌کنند، ذخیره خواهند شد.
+        * **لوکال کاربر محور:** برنامه مشتری به طور خودکار زبان و تنظیمات منطقه‌ای ترجیحی کاربر را تشخیص داده و این اطلاعات را در تمام درخواست‌های API به بک‌اند ارسال می‌کند.
+        * **فرمت‌بندی مرکزی:** یک سرویس اختصاصی تمام فرمت‌بندی‌های مخصوص لوکال برای اعداد، ارزها و تاریخ/زمان‌ها را مدیریت خواهد کرد.
+        * **تطبیق آگاه به لوکال:** سرویس تطبیق برای مدیریت و نمایش قیمت‌ها و مسافت‌ها به ارز و واحدهای ترجیحی کاربر طراحی خواهد شد.
+    * **پیامدها:**
+        * **مثبت:** پلتفرم می‌تواند به آسانی و به سرعت برای بازارهای جدید تطبیق یابد، که برای گسترش کسب‌وکار حیاتی است. یک تجربه محلی‌سازی شده تعامل و رضایت کاربر را به شدت افزایش می‌دهد.
+        * **منفی:** مقداری پیچیدگی اولیه در معماری و توسعه اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و محتوای منطقه‌ای است.
+
+---
+
+#### ADR 7: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** A high-traffic, real-time system like Uber cannot afford service outages caused by faulty deployments. A "big-bang" release of new code to all servers at once is too risky and can disrupt service for millions of users. A robust strategy for **upgradability** that minimizes risk is essential to enable rapid iteration.
+* **Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major releases.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable features remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of services will first be deployed to a small subset of production servers ("canaries") and closely monitored. If the performance and error rates are stable, the new version will be gradually rolled out to all servers.
+    * **A/B Testing:** This approach also supports A/B testing, allowing us to measure the impact of new features on key business metrics before a full release.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage, enables faster and more confident deployments, and supports data-driven decision-making for new features.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 7: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سیستم در زمان واقعی با ترافیک بالا مانند Uber نمی‌تواند قطعی سرویس ناشی از استقرار‌های معیوب را تحمل کند. استقرار "انفجاری" کد جدید بر روی تمام سرورها به صورت همزمان بسیار خطرناک است و می‌تواند سرویس را برای میلیون‌ها کاربر مختل کند. یک استراتژی قوی برای **قابلیت به‌روزرسانی** برای به حداقل رساندن ریسک و امکان تکرار سریع ضروری است.
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد ویژگی‌ها را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک سوئیچ قطع فوری در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها ابتدا به زیرمجموعه کوچکی از سرورهای تولیدی ("قناری‌ها") مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام سرورها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین از تست A/B پشتیبانی می‌کند و به ما امکان می‌دهد تأثیر ویژگی‌های جدید را بر معیارهای کلیدی کسب‌وکار قبل از انتشار کامل اندازه‌گیری کنیم.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به طور چشمگیری کاهش می‌یابد، امکان استقرارهای سریع‌تر و با اطمینان بیشتر را فراهم می‌کند و از تصمیم‌گیری داده‌محور برای ویژگی‌های جدید پشتیبانی می‌کند.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
