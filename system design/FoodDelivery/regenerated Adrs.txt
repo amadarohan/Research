@@ -1,0 +1,208 @@
+My apologies for that oversight. You are correct; I did not translate the existing ADRs as you requested. I will now regenerate the complete response, ensuring all existing ADRs from the file are translated into Farsi, along with the new ADRs I proposed earlier.
+
+***
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+The provided document contains four existing ADRs. Here they are, each with a complete Farsi translation.
+
+---
+
+#### ADR 1: Use a Distributed Search Index for High-Performance Product Discovery
+
+* **Status:** Proposed
+
+* [cite_start]**Context:** A key function of an e-commerce platform is enabling customers to find products quickly and accurately[cite: 44]. [cite_start]A traditional database would not be able to handle the high volume of complex search queries with the required low latency[cite: 45, 46].
+
+* [cite_start]**Decision:** We will implement a dedicated, distributed Search Index (e.g., using Elasticsearch or Apache Solr) separate from the primary product database[cite: 47]. [cite_start]The Product Catalog Service will be the single source of truth for product data, and changes will be asynchronously streamed to the Search Index to keep it up-to-date[cite: 48]. [cite_start]This index will be optimized for fast full-text search and complex filtering operations[cite: 49].
+
+* **Consequences:**
+    * [cite_start]**Positive:** High performance, scalability, and rich functionality[cite: 51, 52, 53].
+    * [cite_start]**Negative:** Data consistency is eventual [cite: 54][cite_start], there is increased system complexity [cite: 56][cite_start], and storage redundancy[cite: 57].
+
+* **Farsi Version - ADR 1: استفاده از یک فهرست جستجوی توزیع‌شده برای کشف محصول با عملکرد بالا**
+    * **وضعیت:** پیشنهادی
+
+    * [cite_start]**مقدمه:** یک عملکرد کلیدی در یک پلتفرم تجارت الکترونیک، امکان یافتن سریع و دقیق محصولات برای مشتریان است[cite: 44]. [cite_start]یک پایگاه داده سنتی قادر به مدیریت حجم بالای جستجوهای پیچیده با تأخیر پایین مورد نیاز نیست[cite: 45, 46].
+
+    * [cite_start]**تصمیم:** ما یک فهرست جستجوی اختصاصی و توزیع‌شده (مثلاً با استفاده از Elasticsearch یا Apache Solr) را پیاده‌سازی خواهیم کرد که از پایگاه داده اصلی محصول جدا است[cite: 47]. [cite_start]سرویس کاتالوگ محصول تنها مرجع اصلی برای داده‌های محصول خواهد بود و تغییرات به صورت ناهمگام به فهرست جستجو ارسال می‌شوند تا آن را به‌روز نگه دارند[cite: 48]. [cite_start]این فهرست برای جستجوی متنی سریع و عملیات فیلترینگ پیچیده بهینه‌سازی خواهد شد[cite: 49].
+
+    * **پیامدها:**
+        * [cite_start]**مثبت:** عملکرد بالا، مقیاس‌پذیری و قابلیت‌های غنی[cite: 51, 52, 53].
+        * [cite_start]**منفی:** سازگاری داده‌ها در نهایت اتفاق می‌افتد [cite: 54][cite_start]، پیچیدگی سیستم افزایش می‌یابد [cite: 56] [cite_start]و افزونگی ذخیره‌سازی وجود دارد[cite: 57].
+
+---
+
+#### ADR 2: Multi-Layered Caching Strategy for High-Read Data
+
+* **Status:** Proposed
+
+* [cite_start]**Context:** An e-commerce store experiences extremely high read volumes[cite: 64]. [cite_start]Repeatedly fetching this data from primary databases would lead to high latency and increased database load[cite: 65]. [cite_start]An effective caching strategy is crucial for a low-latency user experience[cite: 66].
+
+* [cite_start]**Decision:** We will implement a multi-layered caching strategy, including a CDN for static assets, an API Gateway cache for generic responses, a distributed in-memory cache (Redis) for various services, and client-side caching[cite: 67, 68, 69, 70, 71, 72]. [cite_start]A cache-aside pattern with asynchronous invalidation will be used to ensure data freshness[cite: 73, 74].
+
+* **Consequences:**
+    * [cite_start]**Positive:** Dramatic performance improvement, reduced database load, and increased system throughput[cite: 76, 77, 78].
+    * [cite_start]**Negative:** Cache invalidation is complex [cite: 80][cite_start], it introduces eventual consistency [cite: 81][cite_start], and there is operational overhead[cite: 83].
+
+* **Farsi Version - ADR 2: استراتژی کش چند لایه برای داده‌های با حجم خواندن بالا**
+    * **وضعیت:** پیشنهادی
+
+    * [cite_start]**مقدمه:** یک فروشگاه تجارت الکترونیک حجم خواندن بسیار بالایی را تجربه می‌کند[cite: 64]. [cite_start]بازیابی مکرر این داده‌ها از پایگاه‌های داده اصلی منجر به تأخیر بالا و افزایش بار پایگاه داده می‌شود[cite: 65]. [cite_start]یک استراتژی کش مؤثر برای تجربه کاربری با تأخیر پایین بسیار حیاتی است[cite: 66].
+
+    * [cite_start]**تصمیم:** ما یک استراتژی کش چند لایه را پیاده‌سازی خواهیم کرد که شامل CDN برای دارایی‌های ایستا، کش API Gateway برای پاسخ‌های عمومی، کش توزیع‌شده در حافظه (Redis) برای سرویس‌های مختلف و کش سمت کاربر است[cite: 67, 68, 69, 70, 71, 72]. [cite_start]از الگوی cache-aside با اعتبارزدایی ناهمگام برای تضمین تازگی داده‌ها استفاده خواهد شد[cite: 73, 74].
+
+    * **پیامدها:**
+        * [cite_start]**مثبت:** بهبود چشمگیر عملکرد، کاهش بار پایگاه داده و افزایش توان عملیاتی سیستم[cite: 76, 77, 78].
+        * [cite_start]**منفی:** اعتبارزدایی کش پیچیده است [cite: 80][cite_start]، سازگاری نهایی را معرفی می‌کند [cite: 81] [cite_start]و سربار عملیاتی دارد[cite: 83].
+
+---
+
+#### ADR 3: Real-time Recommendation Engine Architecture
+
+* **Status:** Proposed
+
+* [cite_start]**Context:** Personalized product recommendations are critical for driving sales and improving the customer experience[cite: 92]. [cite_start]The Recommendation Service must be able to generate relevant suggestions with low latency[cite: 93].
+
+* [cite_start]**Decision:** We will implement a hybrid architecture combining offline batch processing for model training and online real-time processing for personalization and serving[cite: 95]. [cite_start]An offline pipeline will train models and generate pre-computed recommendations [cite: 96][cite_start], while the online service will gather fresh context to re-rank candidates in real-time[cite: 100].
+
+* **Consequences:**
+    * [cite_start]**Positive:** Highly relevant recommendations, scalability, and improved user experience[cite: 103, 104, 105].
+    * [cite_start]**Negative:** High complexity, significant computational cost, data latency challenges, and the cold start problem[cite: 107, 108, 109, 110].
+
+* **Farsi Version - ADR 3: معماری موتور توصیه در زمان واقعی**
+    * **وضعیت:** پیشنهادی
+
+    * [cite_start]**مقدمه:** توصیه‌های شخصی‌سازی شده محصولات برای افزایش فروش و بهبود تجربه مشتری حیاتی هستند[cite: 92]. [cite_start]سرویس توصیه باید قادر به تولید پیشنهادات مرتبط با تأخیر پایین باشد[cite: 93].
+
+    * [cite_start]**تصمیم:** ما یک معماری ترکیبی را پیاده‌سازی خواهیم کرد که پردازش دسته‌ای آفلاین برای آموزش مدل و پردازش در زمان واقعی آنلاین برای شخصی‌سازی و ارائه را ترکیب می‌کند[cite: 95]. [cite_start]یک خط لوله آفلاین مدل‌ها را آموزش داده و توصیه‌های از پیش محاسبه‌شده را تولید می‌کند [cite: 96][cite_start]، در حالی که سرویس آنلاین اطلاعات جدید را در زمان واقعی جمع‌آوری می‌کند تا نامزدها را مجدداً رتبه‌بندی کند[cite: 100].
+
+    * **پیامدها:**
+        * [cite_start]**مثبت:** توصیه‌های بسیار مرتبط، مقیاس‌پذیری و تجربه کاربری بهبودیافته[cite: 103, 104, 105].
+        * [cite_start]**منفی:** پیچیدگی بالا، هزینه محاسباتی قابل توجه، چالش‌های تأخیر داده و مشکل «شروع سرد» (cold start)[cite: 107, 108, 109, 110].
+
+---
+
+#### ADR 4: Real-time Inventory Management with Distributed Locking
+
+* **Status:** Proposed
+
+* [cite_start]**Context:** Accurate and real-time inventory management is critical[cite: 118]. [cite_start]Overselling leads to customer dissatisfaction and operational headaches[cite: 119]. [cite_start]The Inventory Service must handle a high volume of concurrent stock operations[cite: 121].
+
+* [cite_start]**Decision:** We will implement real-time inventory management using a dedicated service and database, combined with distributed locking/optimistic concurrency control[cite: 122]. [cite_start]Atomic stock updates will prevent overselling, and a distributed lock manager will be used for high-contention scenarios[cite: 125].
+
+* **Consequences:**
+    * [cite_start]**Positive:** Prevents overselling, provides high accuracy, and supports high concurrency[cite: 128, 129, 130].
+    * [cite_start]**Negative:** Increased complexity, performance overhead due to locking, potential for deadlocks, and eventual consistency for displaying stock levels to the user[cite: 132, 133, 134, 135].
+
+* **Farsi Version - ADR 4: مدیریت موجودی در زمان واقعی با قفل‌گذاری توزیع‌شده**
+    * **وضعیت:** پیشنهادی
+
+    * [cite_start]**مقدمه:** مدیریت موجودی دقیق و در زمان واقعی حیاتی است[cite: 118]. [cite_start]فروش بیش از حد (overselling) منجر به نارضایتی مشتری و مشکلات عملیاتی می‌شود[cite: 119]. [cite_start]سرویس موجودی باید حجم بالایی از عملیات همزمان موجودی را مدیریت کند[cite: 121].
+
+    * [cite_start]**تصمیم:** ما مدیریت موجودی در زمان واقعی را با استفاده از یک سرویس و پایگاه داده اختصاصی، همراه با قفل‌گذاری توزیع‌شده/کنترل همروندی خوش‌بینانه، پیاده‌سازی خواهیم کرد[cite: 122]. [cite_start]به‌روزرسانی‌های اتمی موجودی از فروش بیش از حد جلوگیری می‌کنند، و یک مدیر قفل توزیع‌شده برای سناریوهای با رقابت بالا استفاده خواهد شد[cite: 125].
+
+    * **پیامدها:**
+        * [cite_start]**مثبت:** جلوگیری از فروش بیش از حد، ارائه دقت بالا و پشتیبانی از همروندی زیاد[cite: 128, 129, 130].
+        * [cite_start]**منفی:** افزایش پیچیدگی، سربار عملکردی به دلیل قفل‌گذاری، احتمال بن‌بست و سازگاری نهایی برای نمایش سطح موجودی به کاربر[cite: 132, 133, 134, 135].
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+The existing ADRs primarily cover **scalability**, **maintainability**, and **recoverability** (implicitly). To create a comprehensive design for a global platform, we need to address other critical non-functional requirements that are not explicitly covered: **installability**, **localization**, **upgradability**, **leverageability**, and **privacy**.
+
+Here are three new ADRs to cover these missing aspects.
+
+---
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+
+* **Context:** As a major e-commerce platform, we handle sensitive user data. Protecting this information is crucial for user trust, regulatory compliance (e.g., GDPR), and preventing data breaches. Security and privacy must be integrated from the start, not as an afterthought.
+
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach. This includes:
+    * **Data Minimization:** Only collect necessary data.
+    * **Encryption:** Encrypt all sensitive data both in transit (HTTPS/TLS) and at rest.
+    * **Access Control:** Implement the principle of least privilege.
+    * **Anonymization:** Obscure personal identifiers in analytics data.
+    * **Auditability:** Log all access to sensitive data for monitoring.
+
+* **Consequences:**
+    * **Positive:** Increases user trust, ensures regulatory compliance, and reduces the risk of data breaches.
+    * **Negative:** Adds engineering complexity, can introduce a small amount of latency, and may increase costs.
+
+* **Farsi Version - ADR 5: تصمیم معماری برای حریم خصوصی و امنیت داده‌ها**
+    * **وضعیت:** پیشنهادی
+
+    * **مقدمه:** به عنوان یک پلتفرم بزرگ تجارت الکترونیک، ما داده‌های حساس کاربران را مدیریت می‌کنیم. حفاظت از این اطلاعات برای جلب اعتماد کاربر، انطباق با مقررات (مانند GDPR) و جلوگیری از نقض داده‌ها بسیار حیاتی است. امنیت و حریم خصوصی باید از ابتدا و نه به عنوان یک بخش فرعی، در سیستم ادغام شوند.
+
+    * **تصمیم:** ما رویکرد **"طراحی بر پایه حریم خصوصی" (PbD)** و **"طراحی بر پایه امنیت"** را اتخاذ خواهیم کرد. این شامل موارد زیر است:
+        * **به حداقل رساندن داده:** فقط داده‌های ضروری جمع‌آوری شوند.
+        * **رمزنگاری:** تمام داده‌های حساس در حال انتقال (HTTPS/TLS) و در حال سکون رمزنگاری شوند.
+        * **کنترل دسترسی:** اصل کمترین دسترسی پیاده‌سازی شود.
+        * **ناشناس‌سازی:** شناسه‌های شخصی در داده‌های تحلیلی پنهان شوند.
+        * **قابلیت حسابرسی:** تمام دسترسی‌ها به داده‌های حساس برای نظارت، ثبت شوند.
+
+    * **پیامدها:**
+        * **مثبت:** اعتماد کاربران را افزایش می‌دهد، انطباق با مقررات را تضمین می‌کند و ریسک نقض داده‌ها را کاهش می‌دهد.
+        * **منفی:** پیچیدگی مهندسی را افزایش می‌دهد، ممکن است مقدار کمی تأخیر ایجاد کند و هزینه‌ها را بالا ببرد.
+
+---
+
+#### ADR 6: Internationalization and Localization
+
+* **Status:** Proposed
+
+* **Context:** To operate globally, the system must support multiple languages, currencies, and cultural formats. Hard-coding this information would be a significant barrier to expansion. The current design lacks a specific strategy for **localization** and **internationalization**.
+
+* **Decision:** We will design the system with **internationalization as a core principle**. This involves:
+    * **Externalized Strings:** Store all user-facing text in external resource files for easy translation.
+    * **Client-driven Locale:** The client application will determine the user's locale and pass it in API requests.
+    * **Dedicated Formatting Service:** A lightweight service will handle currency and date/time formatting.
+    * **Multi-language CMS:** The Product Catalog Service will integrate with a CMS that supports product data in multiple languages.
+
+* **Consequences:**
+    * **Positive:** Enables global reach, improves the user experience for international customers, and simplifies maintenance.
+    * **Negative:** Adds some initial complexity and operational overhead for managing translations.
+
+* **Farsi Version - ADR 6: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+
+    * **مقدمه:** برای فعالیت در سطح جهانی، سیستم باید از چندین زبان، ارز و فرمت فرهنگی پشتیبانی کند. کدنویسی سخت‌افزاری این اطلاعات مانع بزرگی برای گسترش خواهد بود. طراحی فعلی فاقد یک استراتژی مشخص برای **محلی‌سازی** و **بین‌المللی‌سازی** است.
+
+    * **تصمیم:** ما سیستم را با **بین‌المللی‌سازی به عنوان یک اصل اصلی** طراحی خواهیم کرد. این شامل:
+        * **رشته‌های بیرونی:** ذخیره تمام متن‌های قابل مشاهده برای کاربر در فایل‌های منابع خارجی برای ترجمه آسان.
+        * **لوکال کاربر محور:** برنامه مشتری، لوکال کاربر را تشخیص داده و آن را در درخواست‌های API ارسال می‌کند.
+        * **سرویس فرمت‌بندی اختصاصی:** یک سرویس سبک وزن تبدیل ارز و فرمت‌بندی تاریخ/زمان را مدیریت می‌کند.
+        * **CMS چندزبانه:** سرویس کاتالوگ محصول با یک CMS که از داده‌های محصول به چندین زبان پشتیبانی می‌کند، یکپارچه خواهد شد.
+
+    * **پیامدها:**
+        * **مثبت:** دسترسی جهانی را فراهم می‌کند، تجربه کاربری برای مشتریان بین‌المللی را بهبود می‌بخشد و نگهداری را ساده‌تر می‌کند.
+        * **منفی:** مقداری پیچیدگی اولیه و سربار عملیاتی برای مدیریت ترجمه‌ها اضافه می‌کند.
+
+---
+
+#### ADR 7: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+
+* **Context:** Deploying new features to a high-traffic platform is risky. A bad deployment can cause a massive outage and significant financial loss. A robust strategy for **upgradability** is essential to minimize this risk.
+
+* **Decision:** We will use **feature flags** and a **gradual rollout (canary deployment)** approach for all major releases. Feature flags will allow us to toggle features on or off, and canary deployments will enable us to release new versions to a small percentage of users first, monitoring for issues before a full rollout.
+
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of system-wide failure, enables faster and more confident deployments, and supports A/B testing.
+    * **Negative:** Adds system complexity and can make debugging more challenging.
+
+* **Farsi Version - ADR 7: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+
+    * **مقدمه:** انتشار ویژگی‌های جدید در یک پلتفرم با ترافیک بالا ریسک‌پذیر است. یک استقرار ناموفق می‌تواند باعث یک قطعی گسترده و ضرر مالی قابل توجهی شود. یک استراتژی قوی برای **قابلیت به‌روزرسانی** برای به حداقل رساندن این ریسک ضروری است.
+
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و رویکرد **انتشار تدریجی (canary deployment)** برای تمام انتشارهای اصلی استفاده خواهیم کرد. فلگ‌های ویژگی به ما اجازه می‌دهند ویژگی‌ها را روشن یا خاموش کنیم، و استقرار قناری ما را قادر می‌سازد نسخه‌های جدید را ابتدا برای درصد کمی از کاربران منتشر کرده و قبل از انتشار کامل، مشکلات را نظارت کنیم.
+
+    * **پیامدها:**
+        * **مثبت:** به شدت ریسک شکست سراسری سیستم را کاهش می‌دهد، امکان استقرارهای سریع‌تر و با اطمینان بیشتر را فراهم می‌کند و از تست A/B پشتیبانی می‌کند.
+        * **منفی:** پیچیدگی سیستم را افزایش می‌دهد و می‌تواند اشکال‌زدایی را چالش‌برانگیزتر کند.
