@@ -1,0 +1,198 @@
+You're absolutely right; I should provide a comprehensive answer in the requested format, including Farsi translations for the existing and newly proposed ADRs. My apologies for that oversight. Here is a detailed response outlining a system design for YouTube, incorporating all the requested non-functional requirements.
+
+-----
+
+### Architecture Decision Records (ADRs)
+
+A system like YouTube faces immense challenges due to its global scale and real-time nature. Here is a set of ADRs that cover core design decisions for such a platform.
+
+-----
+
+#### ADR 1: Asynchronous Video Processing Pipeline
+
+  * **Status:** Proposed
+
+  * **Context:** YouTube handles a massive volume of video uploads from creators. Raw video files are often large and in various formats, which are unsuitable for efficient, low-latency streaming to a diverse set of devices and network conditions. Synchronous processing during upload would lead to high latency and a poor user experience. The system requires a highly scalable and resilient way to ingest, transcode, and store video content.
+
+  * **Decision:** We will implement an **asynchronous, event-driven video processing pipeline**. When a creator uploads a video, the raw file will be streamed directly to a highly scalable object storage system (e.g., Google Cloud Storage or AWS S3). Upon successful upload, a message containing the video metadata will be published to a distributed message queue (e.g., Kafka). A fleet of dedicated, stateless worker services will then consume these messages, transcode the video into multiple resolutions and formats (e.g., 4K, 1080p, 720p, 480p, 360p, 144p), and save the processed files back to the object storage. This decouples the upload process from the computationally intensive transcoding.
+
+  * **Consequences:**
+
+      * **Positive:** **Scalability and Resilience:** Decoupling ingestion from processing allows the system to handle massive, concurrent uploads without becoming a bottleneck. The message queue provides a buffer, ensuring no data is lost if a processing worker fails. **Improved User Experience:** Creators receive immediate confirmation of their upload, with processing happening transparently in the background. **Optimized Content Delivery:** Generating multiple video resolutions enables adaptive bitrate streaming, which significantly improves playback quality and reduces buffering for viewers on different devices and networks.
+      * **Negative:** **Increased Complexity:** The pipeline itself is a complex distributed system to build, monitor, and maintain. **Eventual Consistency:** There will be a delay between the raw upload and when all processed video renditions are available for viewing. **Resource Consumption:** Video transcoding is a very CPU-intensive operation, requiring a large number of powerful compute resources, which is a significant operational cost.
+
+  * **Alternatives Considered:**
+
+      * **Synchronous Server-Side Processing:** All processing happens immediately after the video is uploaded. This would block the upload request, leading to high latency and timeouts. **Rejected** for poor performance and lack of scalability.
+      * **Client-Side Transcoding:** The user's application would transcode the video before uploading. This is unreliable due to inconsistent client hardware and network conditions, leading to a poor user experience. **Rejected** for reliability and user experience.
+
+  * **Farsi Version - ADR 1: خط لوله پردازش ویدیوی ناهمگام**
+
+      * **وضعیت:** پیشنهادی
+      * **مقدمه:** یوتیوب حجم عظیمی از ویدیوهای آپلود شده توسط سازندگان را مدیریت می‌کند. فایل‌های ویدیوی خام اغلب بزرگ و در فرمت‌های مختلف هستند که برای پخش کارآمد و با تأخیر پایین به مجموعه‌ای متنوع از دستگاه‌ها و شرایط شبکه مناسب نیستند. پردازش همزمان در حین آپلود منجر به تأخیر بالا و تجربه کاربری ضعیف خواهد شد. سیستم به روشی بسیار مقیاس‌پذیر و مقاوم برای دریافت، تبدیل کد و ذخیره‌سازی محتوای ویدیویی نیاز دارد.
+      * **تصمیم:** ما یک خط لوله پردازش ویدیوی ناهمگام و رویداد-محور را پیاده‌سازی خواهیم کرد. هنگامی که یک سازنده ویدیویی را آپلود می‌کند، فایل خام مستقیماً به یک سیستم ذخیره‌سازی ابری بسیار مقیاس‌پذیر ارسال می‌شود. پس از آپلود موفق، یک پیام حاوی فراداده ویدیو به یک صف پیام توزیع‌شده (مانند Kafka) منتشر خواهد شد. یک مجموعه از سرویس‌های کاری اختصاصی و بدون وضعیت، این پیام‌ها را دریافت کرده، ویدیو را به چندین وضوح و فرمت تبدیل کد می‌کنند و فایل‌های پردازش شده را دوباره در فضای ذخیره‌سازی ابری ذخیره می‌کنند. این کار فرآیند آپلود را از تبدیل کد که از نظر محاسباتی پرهزینه است، جدا می‌کند.
+      * **پیامدها:**
+          * **مثبت:** **مقیاس‌پذیری و انعطاف‌پذیری:** جداسازی دریافت از پردازش به سیستم اجازه می‌دهد تا آپلودهای همزمان و عظیم را بدون ایجاد گلوگاه مدیریت کند. صف پیام به عنوان یک بافر عمل می‌کند و تضمین می‌کند که در صورت خرابی یک پردازشگر، داده‌ای از دست نمی‌رود. **تجربه کاربری بهبودیافته:** سازندگان بلافاصله تأیید آپلود خود را دریافت می‌کنند، در حالی که پردازش به صورت شفاف در پس‌زمینه انجام می‌شود. **تحویل محتوای بهینه‌شده:** تولید وضوح‌های ویدیویی متعدد، پخش با نرخ بیت تطبیقی را ممکن می‌سازد که به طور قابل توجهی کیفیت پخش را بهبود می‌بخشد و بافرینگ را برای بینندگان در دستگاه‌ها و شبکه‌های مختلف کاهش می‌دهد.
+          * **منفی:** **افزایش پیچیدگی:** خود خط لوله یک سیستم توزیع‌شده پیچیده برای ساخت، نظارت و نگهداری است. **سازگاری نهایی:** بین آپلود خام و زمانی که تمام نسخه‌های ویدیویی پردازش شده برای مشاهده در دسترس هستند، تأخیر وجود خواهد داشت. **مصرف منابع:** تبدیل کد ویدیو یک عملیات بسیار پرهزینه از نظر CPU است که نیاز به منابع محاسباتی قدرتمند و زیادی دارد و یک هزینه عملیاتی قابل توجه است.
+      * **جایگزین‌های بررسی شده:**
+          * **پردازش همزمان سمت سرور:** تمام پردازش بلافاصله پس از آپلود ویدیو انجام می‌شود. این کار درخواست آپلود را مسدود می‌کند و منجر به تأخیر بالا و زمان‌بندی‌های نادرست می‌شود. **رد شد** به دلیل عملکرد ضعیف و عدم مقیاس‌پذیری.
+          * **تبدیل کد سمت مشتری:** برنامه کاربر ویدیو را قبل از آپلود تبدیل کد می‌کند. این کار به دلیل سخت‌افزار و شرایط شبکه ناهمسان مشتریان غیرقابل اعتماد است و منجر به تجربه کاربری ضعیف می‌شود. **رد شد** به دلیل قابلیت اطمینان و تجربه کاربری.
+
+-----
+
+#### ADR 2: Hybrid Content Delivery Network (CDN) for Global Streaming
+
+  * **Status:** Proposed
+
+  * **Context:** YouTube's primary function is to deliver video content globally to billions of users with minimal latency. A central data center for streaming is insufficient, as network distance would introduce unacceptable delays and a single point of failure. The solution must provide a high-quality streaming experience everywhere.
+
+  * **Decision:** We will use a **hybrid CDN strategy**, combining a massive, globally distributed network of edge servers with peer-to-peer (P2P) technology as a supplementary layer. The majority of content delivery will be handled by a traditional CDN (either custom-built like Google's CDN or a major cloud provider's). Video segments will be cached on edge servers close to viewers, ensuring low latency. For popular videos in high-density areas, a P2P layer can be used to offload traffic from the CDN. Viewers' clients will form a mesh to share video chunks with other local viewers, reducing server load and potentially lowering latency even further.
+
+  * **Consequences:**
+
+      * **Positive:** **Global Low Latency:** A global network of edge servers drastically reduces the physical distance between content and viewers, ensuring videos start quickly. **Cost Optimization:** P2P technology can significantly reduce bandwidth costs on the CDN, which is a major operational expense for a service like YouTube. **Resilience:** The decentralized nature of a CDN and P2P provides high availability, as content is replicated across many locations.
+      * **Negative:** **Increased Complexity:** Integrating a P2P layer with a traditional CDN is a complex engineering task, requiring sophisticated client-side logic to manage the mesh and handle fallback to the CDN when P2P is not viable. **Quality of Service (QoS) Challenges:** The performance of P2P is dependent on the number and quality of peers, which can be inconsistent and lead to a poor experience if not managed properly.
+
+  * **Alternatives Considered:**
+
+      * **Pure Centralized Streaming:** Streaming all videos from a central data center. This would be cheap for a small service but would not scale and would result in very high latency for a global audience. **Rejected** for scalability and latency.
+      * **Pure P2P Network:** Relying solely on a P2P network for all video delivery. This is unreliable, as it depends on user participation and has no guarantee of content availability, especially for less popular videos. **Rejected** for reliability and inconsistency.
+
+  * **Farsi Version - ADR 2: شبکه تحویل محتوای (CDN) ترکیبی برای پخش جهانی**
+
+      * **وضعیت:** پیشنهادی
+      * **مقدمه:** عملکرد اصلی یوتیوب، تحویل محتوای ویدیویی به میلیاردها کاربر در سراسر جهان با حداقل تأخیر است. یک مرکز داده مرکزی برای پخش کافی نیست، زیرا فاصله شبکه تأخیرهای غیرقابل قبولی ایجاد می‌کند و به یک نقطه شکست واحد تبدیل می‌شود. راهکار باید تجربه پخش با کیفیت بالا را در همه جا فراهم کند.
+      * **تصمیم:** ما از یک **استراتژی CDN ترکیبی** استفاده خواهیم کرد که یک شبکه گسترده جهانی از سرورهای لبه را با فناوری همتا به همتا (P2P) به عنوان یک لایه تکمیلی ترکیب می‌کند. بخش عمده‌ای از تحویل محتوا توسط یک CDN سنتی (چه سفارشی و چه از ارائه‌دهندگان ابری بزرگ) انجام خواهد شد. بخش‌های ویدیویی در سرورهای لبه نزدیک به بینندگان کش خواهند شد تا تأخیر پایین را تضمین کنند. برای ویدیوهای محبوب در مناطق با تراکم بالا، می‌توان از یک لایه P2P برای کاهش ترافیک از CDN استفاده کرد. کلاینت‌های بینندگان یک شبکه مش تشکیل می‌دهند تا بخش‌های ویدیو را با دیگر بینندگان محلی به اشتراک بگذارند، که بار سرور را کاهش داده و احتمالاً تأخیر را حتی بیشتر کاهش می‌دهد.
+      * **پیامدها:**
+          * **مثبت:** **تأخیر پایین جهانی:** یک شبکه جهانی از سرورهای لبه فاصله فیزیکی بین محتوا و بینندگان را به شدت کاهش می‌دهد و ویدیوها به سرعت شروع به پخش می‌کنند. **بهینه‌سازی هزینه:** فناوری P2P می‌تواند هزینه‌های پهنای باند CDN را به طور قابل توجهی کاهش دهد که یک هزینه عملیاتی اصلی برای سرویسی مانند یوتیوب است. **انعطاف‌پذیری:** ماهیت غیرمتمرکز CDN و P2P دسترسی بالا را فراهم می‌کند، زیرا محتوا در مکان‌های زیادی تکرار می‌شود.
+          * **منفی:** **افزایش پیچیدگی:** یکپارچه‌سازی یک لایه P2P با یک CDN سنتی یک کار مهندسی پیچیده است که نیاز به منطق پیچیده سمت مشتری برای مدیریت شبکه مش دارد. **چالش‌های کیفیت سرویس (QoS):** عملکرد P2P به تعداد و کیفیت همتاها بستگی دارد که می‌تواند ناپایدار باشد و در صورت عدم مدیریت صحیح منجر به تجربه کاربری ضعیف شود.
+      * **جایگزین‌های بررسی شده:**
+          * **پخش متمرکز خالص:** پخش تمام ویدیوها از یک مرکز داده مرکزی. این کار برای یک سرویس کوچک ارزان است اما مقیاس‌پذیر نیست و منجر به تأخیر بسیار بالا برای مخاطبان جهانی می‌شود. **رد شد** به دلیل مقیاس‌پذیری و تأخیر.
+          * **شبکه P2P خالص:** اتکا کامل به یک شبکه P2P برای تمام تحویل ویدیو. این رویکرد غیرقابل اعتماد است، زیرا به مشارکت کاربران بستگی دارد و تضمینی برای در دسترس بودن محتوا، به ویژه برای ویدیوهای کمتر محبوب، ندارد. **رد شد** به دلیل قابلیت اطمینان و ناپایداری.
+
+-----
+
+#### ADR 3: Multi-Factor Ranking Algorithm for Search and Recommendations
+
+  * **Status:** Proposed
+
+  * **Context:** YouTube's success is directly tied to its ability to recommend relevant videos and serve highly accurate search results. A simple approach based on views or keywords is insufficient for a modern, personalized platform. The ranking algorithm must be sophisticated enough to provide highly relevant content at scale, balancing user engagement with content quality and creator incentives.
+
+  * **Decision:** We will use a multi-factor ranking algorithm driven by **machine learning (ML)** models. This algorithm will operate on a vast array of signals: **Core Relevance** (textual matching of query to title/description), **Quality Signals** (viewer watch time, likes/dislikes, creator reputation), **Freshness** (giving a boost to new, trending videos), **Personalization** (user's watch history and subscriptions), and **External Factors** (e.g., time of day, device type, region). These ML models will be trained offline using large datasets of user behavior and deployed to a low-latency ranking service for real-time inference.
+
+  * **Consequences:**
+
+      * **Positive:** **High Relevance:** Leveraging ML and numerous signals allows for highly accurate and personalized content recommendations and search results, which is key for user engagement. **Adaptability:** The models can be continuously improved with new data and retraining, allowing the ranking to adapt to evolving trends and user behavior. **Scalability:** The architecture is designed to scale horizontally, with the heavy lifting of model training handled offline and only low-latency inference at query time.
+      * **Negative:** **High Computational Cost:** Training and retraining large-scale ML models require immense computational resources. **Model Complexity and Explainability:** Sophisticated ML models can sometimes be "black boxes," making it difficult to fully understand why a video was recommended, which can complicate debugging and fairness analysis. **Data Dependencies:** Requires vast amounts of high-quality data (watch logs, search queries, user feedback) for effective model training.
+
+  * **Alternatives Considered:**
+
+      * **Simple Chronological/Views-Based Ranking:** Ranking videos simply by upload date or total views. This is easy to implement but provides very poor user personalization and would not surface relevant content for niche interests. **Rejected** for low relevance and poor user experience.
+      * **Human-Curated Recommendations:** Manually curating video lists and recommendations. This is entirely unfeasible for the scale of YouTube and would not be able to keep up with the continuous flow of new content. **Rejected** for lack of scalability.
+
+  * **Farsi Version - ADR 3: الگوریتم رتبه‌بندی چند عاملی برای جستجو و توصیه‌ها**
+
+      * **وضعیت:** پیشنهادی
+      * **مقدمه:** موفقیت یوتیوب مستقیماً به توانایی آن در توصیه ویدیوهای مرتبط و ارائه نتایج جستجوی بسیار دقیق مرتبط است. یک رویکرد ساده بر اساس تعداد بازدیدها یا کلمات کلیدی برای یک پلتفرم مدرن و شخصی‌سازی شده کافی نیست. الگوریتم رتبه‌بندی باید به اندازه‌ای پیچیده باشد که محتوای بسیار مرتبط را در مقیاس بزرگ فراهم کند و تعادل بین تعامل کاربر و کیفیت محتوا را حفظ کند.
+      * **تصمیم:** ما از یک الگوریتم رتبه‌بندی چند عاملی استفاده خواهیم کرد که توسط **مدل‌های یادگیری ماشین (ML)** هدایت می‌شود. این الگوریتم بر روی طیف گسترده‌ای از سیگنال‌ها عمل خواهد کرد: **ارتباط اصلی** (تطبیق متنی پرس‌وجو با عنوان/توضیحات)، **سیگنال‌های کیفیت** (مدت زمان تماشا، لایک/دیس‌لایک، اعتبار سازنده)، **تازگی** (افزایش رتبه ویدیوهای جدید و پرطرفدار)، **شخصی‌سازی** (سابقه تماشا و اشتراک‌های کاربر) و **عوامل خارجی** (مانند زمان روز، نوع دستگاه، منطقه). این مدل‌های ML به صورت آفلاین با استفاده از مجموعه‌ داده‌های بزرگ رفتار کاربر آموزش داده شده و برای استنتاج در زمان واقعی در یک سرویس رتبه‌بندی با تأخیر پایین مستقر می‌شوند.
+      * **پیامدها:**
+          * **مثبت:** **ارتباط بالا:** استفاده از ML و سیگنال‌های متعدد امکان توصیه‌های محتوا و نتایج جستجوی بسیار دقیق و شخصی‌سازی شده را فراهم می‌کند که برای تعامل کاربر کلیدی است. **انعطاف‌پذیری:** مدل‌ها می‌توانند به طور مداوم با داده‌های جدید و آموزش مجدد بهبود یابند و امکان سازگاری رتبه‌بندی با روندهای در حال تحول و رفتار کاربر را فراهم می‌کنند. **مقیاس‌پذیری:** معماری به گونه‌ای طراحی شده که به صورت افقی مقیاس‌پذیر باشد، با انجام کارهای سنگین آموزش مدل به صورت آفلاین و تنها استنتاج با تأخیر پایین در زمان پرس‌وجو.
+          * **منفی:** **هزینه محاسباتی بالا:** آموزش و آموزش مجدد مدل‌های ML در مقیاس بزرگ نیاز به منابع محاسباتی عظیم دارد. **پیچیدگی و قابلیت توضیح مدل:** مدل‌های ML پیچیده گاهی اوقات می‌توانند "جعبه سیاه" باشند، که درک کامل دلایل توصیه یک ویدیو را دشوار می‌سازد و اشکال‌زدایی و تحلیل انصاف را پیچیده می‌کند. **وابستگی‌های داده:** برای آموزش مؤثر مدل‌ها به حجم عظیمی از داده‌های با کیفیت (لاگ‌های تماشا، پرس‌وجوهای جستجو، بازخورد کاربر) نیاز است.
+      * **جایگزین‌های بررسی شده:**
+          * **رتبه‌بندی ساده بر اساس زمان/بازدید:** رتبه‌بندی ویدیوها صرفاً بر اساس تاریخ آپلود یا کل بازدیدها. این کار آسان است اما شخصی‌سازی کاربر بسیار ضعیفی را فراهم می‌کند و محتوای مرتبط برای علایق خاص را نشان نمی‌دهد. **رد شد** به دلیل ارتباط پایین و تجربه کاربری ضعیف.
+          * **توصیه‌های انسانی:** مدیریت دستی فهرست ویدیوها و توصیه‌ها. این کار برای مقیاس یوتیوب کاملاً غیرقابل انجام است و نمی‌تواند با جریان مداوم محتوای جدید همراه باشد. **رد شد** به دلیل عدم مقیاس‌پذیری.
+
+-----
+
+#### ADR 4: Data Privacy and Security with Regional Data Storage
+
+  * **Status:** Proposed
+
+  * **Context:** YouTube handles a massive volume of sensitive user data, including personal information, watch history, and private messages/comments. Protecting this data is not only a legal requirement (e.g., GDPR, CCPA) but is also crucial for maintaining user trust. Furthermore, data sovereignty laws in various countries require that certain data be stored within specific geographical borders.
+
+  * **Decision:** We will adopt a **"Privacy by Design"** and **"Security by Design"** approach. This involves several key architectural decisions: **End-to-end Encryption:** For private messages and direct communication, we will implement end-to-end encryption. **Data Encryption at Rest and In Transit:** All user data, including watch history, search queries, and personal information, will be encrypted both at rest in the databases and in transit between services. **Regional Data Centers:** To comply with data sovereignty laws and reduce latency, we will store user data in regional data centers. A user's personal data will be stored in the data center closest to their primary location. **Data Minimization and Anonymization:** For analytics and machine learning, we will use techniques to minimize the collection of PII and will anonymize data where possible.
+
+  * **Consequences:**
+
+      * **Positive:** **Regulatory Compliance:** The system is built to comply with global privacy laws from the ground up. **User Trust:** Proactive data protection measures build confidence and brand loyalty. **Reduced Latency:** Storing data in regional data centers reduces latency for users accessing their personalized data.
+      * **Negative:** **Increased Complexity:** Managing a global, sharded database with regional data sovereignty rules is a highly complex engineering challenge. **Data Consistency:** Maintaining data consistency for a user who travels between regions or for global analytics becomes more complex. **Increased Costs:** Operating multiple regional data centers and managing the complex data replication and migration logic increases operational costs.
+
+  * **Alternatives Considered:**
+
+      * **Centralized Data Storage:** Storing all user data in a single, centralized data center. This is simpler to manage but would not comply with data sovereignty laws and would lead to high latency for a large portion of the global user base. **Rejected** for legal and performance reasons.
+      * **No Encryption:** Not encrypting user data. This is an unacceptable risk for a service of this scale and would lead to a catastrophic data breach. **Rejected** for security and ethical reasons.
+
+  * **Farsi Version - ADR 4: حریم خصوصی و امنیت داده‌ها با ذخیره‌سازی منطقه‌ای داده‌ها**
+
+      * **وضعیت:** پیشنهادی
+      * **مقدمه:** یوتیوب حجم عظیمی از داده‌های حساس کاربران را مدیریت می‌کند، از جمله اطلاعات شخصی، سابقه تماشا و پیام‌ها/نظرات خصوصی. حفاظت از این داده‌ها نه تنها یک الزام قانونی است، بلکه برای حفظ اعتماد کاربر نیز حیاتی است. علاوه بر این، قوانین حاکمیت داده‌ها در کشورهای مختلف ایجاب می‌کند که داده‌های خاصی در مرزهای جغرافیایی مشخصی ذخیره شوند.
+      * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی"** و **"امنیت از طریق طراحی"** را اتخاذ خواهیم کرد. این امر شامل چندین تصمیم معماری کلیدی است: **رمزنگاری سرتاسری:** برای پیام‌های خصوصی، ما رمزنگاری سرتاسری را پیاده‌سازی خواهیم کرد. **رمزنگاری داده‌ها در حال سکون و انتقال:** تمام داده‌های کاربر، از جمله سابقه تماشا و اطلاعات شخصی، هم در حال سکون در پایگاه‌های داده و هم در حال انتقال بین سرویس‌ها رمزنگاری خواهند شد. **مراکز داده منطقه‌ای:** برای انطباق با قوانین حاکمیت داده‌ها و کاهش تأخیر، داده‌های کاربر را در مراکز داده منطقه‌ای ذخیره خواهیم کرد. **به حداقل رساندن و ناشناس‌سازی داده‌ها:** برای تحلیل‌ها و یادگیری ماشین، از تکنیک‌هایی برای به حداقل رساندن جمع‌آوری اطلاعات شخصی قابل شناسایی و ناشناس‌سازی داده‌ها در صورت امکان استفاده خواهیم کرد.
+      * **پیامدها:**
+          * **مثبت:** **انطباق با مقررات:** سیستم از ابتدا برای انطباق با قوانین حریم خصوصی جهانی ساخته شده است. **اعتماد کاربر:** اقدامات پیشگیرانه حفاظت از داده‌ها، اعتماد و وفاداری به برند را می‌سازد. **کاهش تأخیر:** ذخیره‌سازی داده‌ها در مراکز داده منطقه‌ای تأخیر برای دسترسی کاربران به داده‌های شخصی‌سازی شده خود را کاهش می‌دهد.
+          * **منفی:** **افزایش پیچیدگی:** مدیریت یک پایگاه داده جهانی و تقسیم‌شده با قوانین حاکمیت داده‌های منطقه‌ای یک چالش مهندسی بسیار پیچیده است. **سازگاری داده‌ها:** حفظ سازگاری داده‌ها برای کاربری که بین مناطق سفر می‌کند یا برای تحلیل‌های جهانی، پیچیده‌تر می‌شود. **افزایش هزینه‌ها:** عملیات چندین مرکز داده منطقه‌ای و مدیریت منطق پیچیده تکرار و انتقال داده‌ها، هزینه‌های عملیاتی را افزایش می‌دهد.
+      * **جایگزین‌های بررسی شده:**
+          * **ذخیره‌سازی داده‌های متمرکز:** ذخیره تمام داده‌های کاربر در یک مرکز داده متمرکز. مدیریت این کار ساده‌تر است اما با قوانین حاکمیت داده‌ها مطابقت ندارد و برای بخش بزرگی از کاربران جهانی منجر به تأخیر بالا می‌شود. **رد شد** به دلایل قانونی و عملکردی.
+          * **عدم رمزنگاری:** رمزنگاری نکردن داده‌های کاربر. این یک ریسک غیرقابل قبول برای سرویسی در این مقیاس است و می‌تواند منجر به نقض فاجعه‌بار داده‌ها شود. **رد شد** به دلایل امنیتی و اخلاقی.
+
+-----
+
+#### ADR 5: Internationalization and Localization
+
+  * **Status:** Proposed
+
+  * **Context:** As a global platform, YouTube must cater to viewers and creators worldwide. This requires supporting multiple languages for the user interface, video metadata (titles, descriptions), and content recommendations. The current design implicitly addresses some of these but lacks a formal strategy for **internationalization (I18n)** and **localization (L10n)**.
+
+  * **Decision:** We will design the system with **internationalization as a core principle**. This involves: **Externalized Content:** All user-facing text and messages will be stored in external files and databases that support multiple languages. **Locale-Aware Services:** Backend services, particularly the Search and Recommendation engines, will be designed to handle and understand content and queries in different languages, including language-specific tokenization and ranking models. **Geographic Content Prioritization:** The system will prioritize displaying content that is relevant to a user's location and language preference.
+
+  * **Consequences:**
+
+      * **Positive:** **Global Reach:** The platform can be easily and quickly adapted for new markets, which is crucial for business expansion. **Improved User Experience:** A localized experience with relevant content improves user engagement and satisfaction.
+      * **Negative:** **Increased Complexity:** Adds initial architectural and development complexity and requires a dedicated process for managing translations and regional content.
+
+  * **Alternatives Considered:**
+
+      * **Minimal Localization:** Only translating key UI elements without adapting video metadata or recommendation logic. This would provide a poor user experience in non-English markets. **Rejected** for lack of effectiveness.
+
+  * **Farsi Version - ADR 5: بین‌المللی‌سازی و محلی‌سازی**
+
+      * **وضعیت:** پیشنهادی
+      * **مقدمه:** به عنوان یک پلتفرم جهانی، یوتیوب باید به بینندگان و سازندگان در سراسر جهان خدمات ارائه دهد. این امر نیازمند پشتیبانی از چندین زبان برای رابط کاربری، فراداده ویدیو (عنوان‌ها، توضیحات) و توصیه‌های محتوا است. طراحی فعلی به طور ضمنی به برخی از این موارد اشاره دارد اما فاقد یک استراتژی رسمی برای **بین‌المللی‌سازی (I18n)** و **محلی‌سازی (L10n)** است.
+      * **تصمیم:** ما سیستم را با **بین‌المللی‌سازی به عنوان یک اصل اصلی** طراحی خواهیم کرد. این شامل: **محتوای بیرونی:** تمام متن‌ها و پیام‌های قابل مشاهده برای کاربر در فایل‌ها و پایگاه‌های داده خارجی که از چندین زبان پشتیبانی می‌کنند، ذخیره خواهند شد. **سرویس‌های آگاه به لوکال:** سرویس‌های بک‌اند، به ویژه موتورهای جستجو و توصیه، برای مدیریت و درک محتوا و پرس‌وجوها به زبان‌های مختلف، از جمله توکن‌سازی و مدل‌های رتبه‌بندی مخصوص زبان، طراحی خواهند شد. **اولویت‌بندی محتوای جغرافیایی:** سیستم محتوایی را که با موقعیت مکانی و ترجیح زبانی کاربر مرتبط است، در اولویت نمایش قرار خواهد داد.
+      * **پیامدها:**
+          * **مثبت:** **دسترسی جهانی:** پلتفرم می‌تواند به آسانی و به سرعت برای بازارهای جدید تطبیق یابد، که برای گسترش کسب‌وکار حیاتی است. **تجربه کاربری بهتر:** یک تجربه محلی‌سازی شده با محتوای مرتبط، تعامل و رضایت کاربر را بهبود می‌بخشد.
+          * **منفی:** **افزایش پیچیدگی:** پیچیدگی اولیه در معماری و توسعه را اضافه می‌کند و نیاز به یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و محتوای منطقه‌ای دارد.
+      * **جایگزین‌های بررسی شده:**
+          * **محلی‌سازی حداقلی:** تنها ترجمه عناصر کلیدی رابط کاربری بدون تطبیق فراداده ویدیو یا منطق توصیه. این کار تجربه کاربری ضعیفی در بازارهای غیرانگلیسی‌زبان فراهم می‌کند. **رد شد** به دلیل عدم اثربخشی.
+
+-----
+
+#### ADR 6: Upgradability with Gradual Rollouts and Feature Flags
+
+  * **Status:** Proposed
+
+  * **Context:** YouTube is a mission-critical, continuous-delivery platform. Deploying new features or optimizations (e.g., a new recommendation algorithm) can be extremely risky. A faulty deployment could disrupt service for millions of users, causing significant reputational and financial damage. A robust strategy for **upgradability** that minimizes risk is essential.
+
+  * **Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major releases. Feature flags will act as an instant kill switch, allowing us to enable or disable features remotely without a code deployment. New versions of services will first be deployed to a small subset of production instances and monitored closely. If the performance and error rates are stable, the new version will be gradually rolled out to all instances. This approach also supports A/B testing of different features.
+
+  * **Consequences:**
+
+      * **Positive:** **Reduced Risk:** Dramatically reduces the risk of a major outage due to a bad deployment. **Faster Development Cycles:** Enables faster, more confident, and more frequent releases. **Improved Quality:** Issues can be caught and contained with a small user base.
+      * **Negative:** **Increased Complexity:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+  * **Alternatives Considered:**
+
+      * **Big-Bang Deployment:** Deploying a new version to all production servers at once. This is the simplest approach but poses an unacceptable risk for a live system. **Rejected** for lack of reliability.
+
+  * **Farsi Version - ADR 6: قابلیت به‌روزرسانی با انتشار تدریجی و فلگ‌های ویژگی**
+
+      * **وضعیت:** پیشنهادی
+      * **مقدمه:** یوتیوب یک پلتفرم حیاتی با تحویل مداوم است. استقرار ویژگی‌ها یا بهینه‌سازی‌های جدید می‌تواند بسیار خطرناک باشد. یک استقرار معیوب می‌تواند سرویس را برای میلیون‌ها کاربر مختل کند، که باعث آسیب قابل توجهی به اعتبار و ضررهای مالی می‌شود. یک استراتژی قوی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند، ضروری است.
+      * **تصمیم:** ما از ترکیبی از **فلگ‌های ویژگی** و یک فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد. فلگ‌های ویژگی به عنوان یک سوئیچ قطع فوری عمل خواهند کرد و به ما اجازه می‌دهند ویژگی‌ها را از راه دور و بدون استقرار کد فعال یا غیرفعال کنیم. نسخه‌های جدید سرویس‌ها ابتدا برای زیرمجموعه کوچکی از نمونه‌های تولیدی مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام نمونه‌ها منتشر خواهد شد. این رویکرد همچنین از تست A/B ویژگی‌های مختلف پشتیبانی می‌کند.
+      * **پیامدها:**
+          * **مثبت:** **کاهش ریسک:** ریسک یک قطعی بزرگ به دلیل یک استقرار معیوب را به شدت کاهش می‌دهد. **چرخه‌های توسعه سریع‌تر:** امکان انتشار سریع‌تر، با اطمینان بیشتر و مکرر را فراهم می‌کند. **کیفیت بهبودیافته:** مشکلات را می‌توان با یک پایگاه کاربری کوچک شناسایی و مهار کرد.
+          * **منفی:** **افزایش پیچیدگی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
+      * **جایگزین‌های بررسی شده:**
+          * **استقرار انفجاری:** استقرار یک نسخه جدید به همه سرورهای تولیدی به صورت همزمان. این ساده‌ترین رویکرد است اما ریسک غیرقابل قبولی برای یک سیستم زنده ایجاد می‌کند. **رد شد** به دلیل عدم قابلیت اطمینان.
+
+-----
+
