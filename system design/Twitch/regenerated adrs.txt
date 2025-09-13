@@ -1,0 +1,166 @@
+The Twitch system design document provides four Architecture Decision Records (ADRs) that address critical non-functional requirements. The existing ADRs focus heavily on **scalability**, **performance**, **maintainability**, and **efficiency**. For instance, ADR 1 details a distributed transcoding pipeline to handle video adaptation at scale. ADR 2 discusses a hybrid content delivery protocol to ensure low latency and broad compatibility. ADR 3 proposes a pub/sub architecture for real-time chat, ensuring high throughput and responsiveness. Finally, ADR 4 suggests a tiered storage strategy for VODs to handle massive video archives cost-effectively.
+
+However, a complete system design for a global live-streaming platform requires explicit decisions on other non-functional requirements not covered in the existing ADRs. The current document lacks a formal strategy for **upgradability**, **security** and **privacy**, or **localization**. A robust system must be designed to allow for safe and continuous feature releases, protect sensitive user and stream data, and adapt to different languages and regions.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Distributed Transcoding Pipeline for Real-Time Adaptability
+
+* **Status:** Proposed
+* **Context:** A live-streaming platform must deliver high-quality video to a diverse set of devices and network conditions. A single, high-bitrate stream is not suitable for all viewers.
+* **Decision:** We will implement a distributed transcoding pipeline immediately after stream ingestion. The raw stream will be sent to a fleet of distributed servers, which will convert it into multiple resolutions and bitrates. These transcoded streams will then be packaged into small, chunked files and pushed to a global CDN.
+* **Consequences:**
+    * **Positive:** Enables adaptive streaming, improves scalability by allowing independent scaling of the transcoding service, and is designed to be fault-tolerant.
+    * **Negative:** Transcoding is a CPU-intensive process with a high operational cost, adds complexity to the pipeline, and introduces a small but unavoidable latency to the live stream.
+
+* **Farsi Version - ADR 1: استفاده از یک خط لوله تبدیل کد توزیع‌شده برای تطبیق‌پذیری در زمان واقعی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک چالش اصلی برای پلتفرم پخش زنده، ارائه یک جریان ویدیویی با کیفیت بالا به مجموعه‌ای متنوع از دستگاه‌ها و شرایط شبکه است. یک استریمر یک جریان با بیت‌ریت بالا را آپلود می‌کند، اما یک بیننده در یک دستگاه موبایل با شبکه کند نمی‌تواند این جریان را مصرف کند.
+    * **تصمیم:** ما یک خط لوله تبدیل کد توزیع‌شده را بلافاصله پس از دریافت جریان زنده پیاده‌سازی خواهیم کرد. جریان خام به یک مجموعه از سرورهای تبدیل کد توزیع‌شده ارسال خواهد شد. هر سرور مسئول تبدیل جریان به وضوح‌ها و بیت‌ریت‌های مختلف خواهد بود. سپس این جریان‌های تبدیل کد شده به فایل‌های کوچک و بخش‌بندی شده تبدیل شده و برای تحویل با تأخیر پایین به یک CDN جهانی ارسال خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** پخش تطبیق‌پذیر را ممکن می‌سازد، مقیاس‌پذیری را با اجازه دادن به مقیاس‌پذیری مستقل سرویس تبدیل کد بهبود می‌بخشد و برای تحمل خطا طراحی شده است.
+        * **منفی:** تبدیل کد یک فرآیند پرهزینه از نظر CPU است که هزینه‌های عملیاتی قابل توجهی دارد، پیچیدگی را به خط لوله اضافه می‌کند و یک تأخیر کوچک اما اجتناب‌ناپذیر به جریان زنده وارد می‌کند.
+
+---
+
+#### ADR 2: Live Stream Delivery Protocol for Viewers (HLS vs. DASH vs. LL-HLS)
+
+* **Status:** Proposed
+* **Context:** After transcoding, the video stream must be delivered to millions of concurrent viewers. The choice of delivery protocol significantly impacts latency, compatibility, and scalability.
+* **Decision:** We will primarily use **HLS** for content delivery and also support **MPEG-DASH** for broader device compatibility. To meet the low-latency requirement, we will implement **Low-Latency HLS (LL-HLS)** as the preferred protocol for modern clients, with HLS/DASH serving as a fallback for older clients.
+* **Consequences:**
+    * **Positive:** Ensures broad compatibility across all modern devices, inherently supports adaptive bitrate streaming, and LL-HLS specifically targets sub-second latency for a more interactive experience.
+    * **Negative:** Adds complexity to manage multiple protocols, increases storage and encoding overhead, and even low-latency protocols still have a small, inherent latency.
+
+* **Farsi Version - ADR 2: پروتکل تحویل جریان زنده برای بینندگان (HLS در مقابل DASH در مقابل LL-HLS)**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** پس از تبدیل کد، جریان ویدیویی باید به میلیون‌ها بیننده همزمان تحویل داده شود. انتخاب پروتکل تحویل به طور قابل توجهی بر تأخیر، سازگاری و توانایی مقیاس‌پذیری تأثیر می‌گذارد.
+    * **تصمیم:** ما عمدتاً از **HLS** برای تحویل محتوا استفاده خواهیم کرد، در حالی که از **MPEG-DASH** نیز برای سازگاری گسترده‌تر با دستگاه‌ها پشتیبانی می‌کنیم. برای رفع نیاز حیاتی به تأخیر پایین برای پخش زنده، ما به طور فعال **HLS با تأخیر پایین (LL-HLS)** را به عنوان مکانیزم تحویل ترجیحی برای مشتریان مدرن پیاده‌سازی خواهیم کرد.
+    * **پیامدها:**
+        * **مثبت:** سازگاری گسترده‌ای را در تمام دستگاه‌های مدرن تضمین می‌کند، به طور ذاتی از پخش تطبیق‌پذیر پشتیبانی می‌کند و LL-HLS به طور خاص تأخیر کمتر از یک ثانیه را هدف قرار می‌دهد که برای تجربیات زنده تعاملی حیاتی است.
+        * **منفی:** پیچیدگی مدیریت چندین پروتکل را افزایش می‌دهد، سربار ذخیره‌سازی و تبدیل کد را بالا می‌برد و حتی پروتکل‌های با تأخیر پایین نیز همچنان تأخیر ذاتی کوچکی دارند.
+
+---
+
+#### ADR 3: Real-time Chat Architecture for High Concurrency and Low Latency
+
+* **Status:** Accepted
+* **Context:** The live chat is integral to the Twitch experience, but it must handle an extremely high volume of messages with very low latency.
+* **Decision:** We will implement a distributed, publish-subscribe chat architecture using a **Message Broker** (e.g., Kafka) as the central nervous system. **WebSockets** will be used for persistent, bi-directional communication between clients and the Chat Service. Messages will be published to a Kafka topic and then fanned out to all connected viewers.
+* **Consequences:**
+    * **Positive:** Provides massive scalability with Kafka's high-throughput messaging, ensures low latency with WebSockets, and decouples services for better resilience and flexibility.
+    * **Negative:** Managing a Kafka cluster and a fleet of WebSocket servers is complex and requires specialized operational expertise.
+
+* **Farsi Version - ADR 3: معماری چت در زمان واقعی برای همروندی بالا و تأخیر پایین**
+    * **وضعیت:** پذیرفته شده
+    * **مقدمه:** قابلیت چت زنده بخش جدایی‌ناپذیر تجربه توییچ است، اما باید حجم بسیار بالایی از پیام‌ها را با تأخیر بسیار پایین مدیریت کند.
+    * **تصمیم:** ما یک معماری چت توزیع‌شده و منتشر-مشترک (pub/sub) را با استفاده از یک **واسط پیام** (مانند Kafka) به عنوان سیستم عصبی مرکزی پیاده‌سازی خواهیم کرد. **WebSockets** برای ارتباط پایدار و دوطرفه بین برنامه‌های مشتری و نمونه‌های سرویس چت استفاده خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** مقیاس‌پذیری بسیار زیادی را با پیام‌رسانی با توان عملیاتی بالای Kafka فراهم می‌کند، تأخیر پایین را با WebSockets تضمین می‌کند و وابستگی سرویس‌ها را برای انعطاف‌پذیری و مقاومت بیشتر کاهش می‌دهد.
+        * **منفی:** مدیریت و مقیاس‌بندی یک خوشه Kafka و مجموعه‌ای از سرورهای WebSocket پیچیده است و نیاز به تخصص عملیاتی قابل توجهی دارد.
+
+---
+
+#### ADR 4: VOD Storage and Retrieval Strategy
+
+* **Status:** Proposed
+* **Context:** Twitch offers Video-on-Demand (VOD) services, requiring efficient and cost-effective storage for vast amounts of video data. VODs can vary in popularity, necessitating a flexible storage solution.
+* **Decision:** We will use a **tiered storage strategy** leveraging a Cloud Object Storage solution (e.g., AWS S3). Raw or transcoded segments will be archived immediately after a live stream ends. Less frequently accessed VODs will be transitioned to colder storage tiers to optimize costs, and all content will be served via a global CDN.
+* **Consequences:**
+    * **Positive:** Provides massive scalability and durability with virtually unlimited storage capacity. Tiering significantly reduces long-term storage costs, and CDN delivery ensures low-latency playback.
+    * **Negative:** Storing vast amounts of data incurs costs, retrieving data from cold tiers can be more expensive and slower, and the system becomes tightly coupled to the chosen cloud provider.
+
+* **Farsi Version - ADR 4: استراتژی ذخیره‌سازی و بازیابی VOD**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** توییچ خدمات ویدیوی درخواستی (VOD) را ارائه می‌دهد که نیازمند ذخیره‌سازی کارآمد و مقرون به صرفه برای حجم عظیمی از داده‌های ویدیویی است. محبوبیت VODها می‌تواند بسیار متفاوت باشد، که نیازمند یک راهکار ذخیره‌سازی انعطاف‌پذیر است.
+    * **تصمیم:** ما از یک **استراتژی ذخیره‌سازی لایه‌بندی شده** با استفاده از یک راهکار ذخیره‌سازی ابری (مانند AWS S3) به عنوان فروشگاه اصلی ویدیویی استفاده خواهیم کرد. بخش‌های خام یا تبدیل‌کد شده بلافاصله پس از پایان یک جریان زنده آرشیو خواهند شد. VODهای کم‌دسترسی‌تر به لایه‌های ذخیره‌سازی سردتر منتقل خواهند شد تا هزینه‌ها بهینه شوند، و تمام محتوا از طریق یک CDN جهانی ارائه خواهد شد.
+    * **پیامدها:**
+        * **مثبت:** مقیاس‌پذیری و پایداری بسیار زیادی را با ظرفیت ذخیره‌سازی تقریباً نامحدود فراهم می‌کند. لایه‌بندی به طور قابل توجهی هزینه‌های ذخیره‌سازی بلندمدت را کاهش می‌دهد و تحویل از طریق CDN تأخیر پایین در پخش را تضمین می‌کند.
+        * **منفی:** ذخیره‌سازی حجم زیادی از داده‌ها هزینه‌هایی دارد، بازیابی داده از لایه‌های سردتر می‌تواند گران‌تر و کندتر باشد و سیستم به شدت به ارائه‌دهنده ابری انتخاب شده وابسته می‌شود.
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more comprehensive design for a global live-streaming platform, the following ADRs are proposed to cover **upgradability**, **security**, and **localization**.
+
+#### ADR 5: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** Twitch is a mission-critical, continuous-delivery platform. Deploying new features or optimizations can be extremely risky, and a faulty deployment could disrupt service for millions of concurrent viewers and streamers, causing significant reputational and financial damage. A "big-bang" release to all systems at once is not an acceptable strategy. A robust strategy for **upgradability** that minimizes risk is essential.
+* [cite_start]**Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major releases. [cite: 1219]
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable it remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of services will first be deployed to a small subset of production instances (a canary group) and monitored closely. If the performance and error rates are stable, the new version will be gradually rolled out to all instances.
+    * **A/B Testing:** This approach also supports A/B testing of different video formats, chat UIs, or monetization features to measure their impact on user engagement before a full release.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage due to a bad deployment. [cite_start]Enables faster, more confident, and more frequent releases. [cite: 1220] Issues can be caught and contained with a small user base.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 5: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** توییچ یک پلتفرم حیاتی با تحویل مداوم است. استقرار ویژگی‌ها یا بهینه‌سازی‌های جدید می‌تواند بسیار خطرناک باشد و یک استقرار معیوب می‌تواند سرویس را برای میلیون‌ها بیننده و استریمر همزمان مختل کند، که باعث آسیب قابل توجهی به اعتبار و ضررهای مالی می‌شود. انتشار "انفجاری" به همه سیستم‌ها به صورت همزمان یک استراتژی قابل قبول نیست. یک استراتژی قوی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند، ضروری است.
+    * **تصمیم:** ما از ترکیبی از **فلگ‌های ویژگی** و یک فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد آن را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک سوئیچ قطع فوری در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها ابتدا در زیرمجموعه کوچکی از نمونه‌های تولیدی (گروه قناری) مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام نمونه‌ها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین از تست A/B فرمت‌های ویدیویی مختلف، رابط‌های کاربری چت یا ویژگی‌های درآمدزایی پشتیبانی می‌کند تا تأثیر آن‌ها بر تعامل کاربر قبل از انتشار کامل اندازه‌گیری شود.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به دلیل یک استقرار معیوب را به شدت کاهش می‌دهد. امکان انتشار سریع‌تر، با اطمینان بیشتر و مکرر را فراهم می‌کند. مشکلات را می‌توان با یک پایگاه کاربری کوچک شناسایی و مهار کرد.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
+
+---
+
+#### ADR 6: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** Twitch handles a significant amount of sensitive data, including user profiles, private chat messages, payment information, and streamer analytics. Protecting this data is not only a legal requirement but is essential for building and maintaining user trust in the platform. The current design mentions services handling data but does not explicitly outline a strategy for protecting it from unauthorized access.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach to protect sensitive data at all levels. Key decisions include:
+    * **Data Encryption:** All sensitive data will be encrypted both in transit (using TLS/HTTPS for all client-to-server and inter-service communication) and at rest (in databases and object storage, especially for VODs and chat history).
+    * **Access Control:** The principle of least privilege will be enforced. Services and personnel will only have access to the data they absolutely need to perform their functions.
+    * **Data Minimization:** We will only collect and store data that is absolutely necessary for the functioning of the business, and will have clear data retention policies.
+    * **Auditing:** All access to and modifications of sensitive data will be logged in an immutable audit trail for regulatory compliance and forensic analysis.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of data breaches and fraud, ensures regulatory compliance, and builds user trust.
+    * **Negative:** Adds a new layer of complexity to the system and may introduce a minor performance overhead for encryption/decryption, which must be carefully managed in a low-latency environment.
+
+* **Farsi Version - ADR 6: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** توییچ حجم قابل توجهی از داده‌های حساس را مدیریت می‌کند، از جمله پروفایل‌های کاربر، پیام‌های چت خصوصی، اطلاعات پرداخت و تحلیل‌های استریمر. حفاظت از این داده‌ها نه تنها یک الزام قانونی است، بلکه برای ایجاد و حفظ اعتماد کاربر به پلتفرم اساسی است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد، اما به طور صریح یک استراتژی برای محافظت از آن‌ها در برابر دسترسی غیرمجاز ارائه نمی‌دهد.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را برای حفاظت از داده‌های حساس در تمام سطوح اتخاذ خواهیم کرد. تصمیمات کلیدی شامل:
+        * **رمزنگاری داده‌ها:** تمام داده‌های حساس در حال انتقال (با استفاده از TLS/HTTPS برای تمام ارتباطات مشتری-سرور و بین سرویس‌ها) و در حال سکون (در پایگاه‌های داده و فضای ذخیره‌سازی، به ویژه برای VODها و تاریخچه چت) رمزنگاری خواهند شد.
+        * **کنترل دسترسی:** اصل حداقل دسترسی اجرا خواهد شد. سرویس‌ها و کارکنان تنها به داده‌هایی که مطلقاً برای انجام وظایف خود نیاز دارند دسترسی خواهند داشت.
+        * **به حداقل رساندن داده‌ها:** ما فقط داده‌هایی را جمع‌آوری و ذخیره خواهیم کرد که برای عملکرد کسب‌وکار کاملاً ضروری هستند و سیاست‌های نگهداری داده واضحی خواهیم داشت.
+        * **حسابرسی:** تمام دسترسی‌ها و تغییرات در داده‌های حساس در یک مسیر حسابرسی تغییرناپذیر برای انطباق با مقررات و تحلیل‌های قانونی ثبت خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** ریسک نقض داده‌ها و کلاهبرداری را به شدت کاهش می‌دهد، انطباق با مقررات را تضمین می‌کند و اعتماد کاربر را می‌سازد.
+        * **منفی:** یک لایه پیچیدگی جدید به سیستم اضافه می‌کند و ممکن است یک سربار عملکردی جزئی برای رمزنگاری/رمزگشایی ایجاد کند که باید به دقت در یک محیط با تأخیر پایین مدیریت شود.
+
+---
+
+#### ADR 7: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** As a global platform, Twitch must cater to viewers and streamers worldwide. This requires supporting multiple languages for the user interface, chat moderation, and stream metadata. The current design does not address a formal strategy for **internationalization (I18n)** and **localization (L10n)**.
+* **Decision:** We will design the application with **internationalization as a core principle**. This involves:
+    * **Externalized Content:** All user-facing text, including UI labels, stream titles, and chat messages, will be stored in external files and databases that support multiple languages.
+    * **Locale-Aware Services:** Backend services like the Chat Service will be aware of a user's language preference for displaying localized content and for automated moderation (e.g., detecting inappropriate content in different languages).
+    * **Content Delivery:** The CDN will deliver language-specific assets, and the API Gateway will be designed to handle locale-specific requests.
+* **Consequences:**
+    * **Positive:** The platform can be easily and quickly adapted for new markets, which is crucial for business expansion. A localized experience significantly improves user engagement and satisfaction.
+    * **Negative:** Adds some initial architectural and development complexity and requires a dedicated process for managing translations and regional content.
+
+* **Farsi Version - ADR 7: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** به عنوان یک پلتفرم جهانی، توییچ باید به بینندگان و استریمرهای سراسر جهان خدمات ارائه دهد. این امر نیازمند پشتیبانی از چندین زبان برای رابط کاربری، مدیریت چت و فراداده جریان است. طراحی فعلی یک استراتژی رسمی برای **بین‌المللی‌سازی (I18n)** و **محلی‌سازی (L10n)** را در نظر نمی‌گیرد.
+    * **تصمیم:** ما برنامه را با **بین‌المللی‌سازی به عنوان یک اصل اصلی** طراحی خواهیم کرد. این شامل:
+        * **محتوای بیرونی:** تمام متن‌های قابل مشاهده برای کاربر، از جمله برچسب‌های رابط کاربری، عناوین جریان و پیام‌های چت، در فایل‌های خارجی و پایگاه‌های داده‌ای که از چندین زبان پشتیبانی می‌کنند، ذخیره خواهند شد.
+        * **سرویس‌های آگاه به لوکال:** سرویس‌های بک‌اند مانند سرویس چت از ترجیح زبانی کاربر برای نمایش محتوای محلی‌سازی شده و برای مدیریت خودکار (مانند تشخیص محتوای نامناسب به زبان‌های مختلف) آگاه خواهند بود.
+        * **تحویل محتوا:** CDN دارایی‌های مخصوص زبان را تحویل خواهد داد و API Gateway برای مدیریت درخواست‌های مخصوص لوکال طراحی خواهد شد.
+    * **پیامدها:**
+        * **مثبت:** پلتفرم می‌تواند به آسانی و به سرعت برای بازارهای جدید تطبیق یابد، که برای گسترش کسب‌وکار حیاتی است. یک تجربه محلی‌سازی شده تعامل و رضایت کاربر را به شدت افزایش می‌دهد.
+        * **منفی:** مقداری پیچیدگی اولیه در معماری و توسعه اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و محتوای منطقه‌ای است.
