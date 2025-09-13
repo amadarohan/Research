@@ -1,0 +1,166 @@
+The provided Zoom system design document outlines four Architecture Decision Records (ADRs) that address key non-functional requirements. The existing ADRs focus on **scalability**, **performance**, **efficiency**, and **security**. For instance, ADR 1 proposes an SFU architecture for media routing to handle a large number of concurrent users. ADR 2 discusses using UDP for real-time media streams to ensure low latency. ADR 3 recommends a polyglot persistence strategy for meeting and chat data, optimizing for both performance and data integrity. Finally, ADR 4 suggests using an OAuth 2.0/OpenID Connect flow for authentication to ensure security and scalability.
+
+However, a complete system design for a global platform like Zoom needs to explicitly address other crucial non-functional requirements that are not covered in the existing ADRs. The current document lacks a formal strategy for **upgradability**, **privacy** and **data retention**, or **localization**. A robust system must be designed to allow for safe and continuous feature releases, protect sensitive user data (especially in a communication platform), and adapt to different languages and regions.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Mesh vs. SFU vs. MCU Architecture for Media Routing
+
+* **Status:** Proposed
+* **Context:** A key decision for a video conferencing system is how to route media streams between participants. The choice of architecture impacts latency, server load, and scalability. Mesh architecture doesn't scale well, and MCU is computationally intensive for the server.
+* **Decision:** We will implement an **SFU (Selective Forwarding Unit)** architecture. Each participant will upload their media to a Media Relay Node (the SFU), which then intelligently forwards the individual streams to other participants.
+* **Consequences:**
+    * **Positive:** Provides a better balance of scalability, performance, and flexibility than the other two models.
+    * **Negative:** The SFU architecture is more complex to implement than a simple Mesh, and there is still some latency compared to a peer-to-peer connection.
+
+* **Farsi Version - ADR 1: استفاده از معماری Mesh در مقابل SFU در مقابل MCU برای مسیریابی رسانه**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک تصمیم کلیدی برای یک سیستم کنفرانس ویدیویی در زمان واقعی این است که چگونه جریان‌های رسانه را بین شرکت‌کنندگان مسیریابی کند. انتخاب معماری مستقیماً بر تأخیر، بار سرور و کیفیت ویدیو تأثیر می‌گذارد. معماری Mesh به خوبی مقیاس‌پذیر نیست و MCU از نظر محاسباتی برای سرور پرهزینه است.
+    * **تصمیم:** ما یک معماری **SFU (واحد انتخاب‌کننده ارسال - Selective Forwarding Unit)** را پیاده‌سازی خواهیم کرد. هر شرکت‌کننده جریان صوتی و تصویری خود را به یک گره Media Relay اختصاصی (SFU) ارسال می‌کند، که سپس جریان‌های فردی سایر شرکت‌کنندگان را به صورت هوشمندانه به هر مشتری فوروارد می‌کند.
+    * **پیامدها:**
+        * **مثبت:** تعادل بهتری از مقیاس‌پذیری، عملکرد و انعطاف‌پذیری نسبت به دو مدل دیگر فراهم می‌کند.
+        * **منفی:** معماری SFU پیچیده‌تر از یک Mesh ساده برای پیاده‌سازی است و همچنان مقداری تأخیر در مقایسه با یک اتصال همتا به همتا دارد.
+
+---
+
+#### ADR 2: Real-time Data Transport Protocol for Media
+
+* **Status:** Accepted
+* **Context:** For real-time audio and video streaming, selecting the appropriate transport protocol is critical for low latency. TCP is reliable but introduces latency, while UDP is fast but unreliable.
+* **Decision:** We will primarily utilize **UDP** for real-time audio and video media streams, specifically leveraging RTP (Real-time Transport Protocol) over UDP. For situations where UDP is blocked, a fallback mechanism will be implemented to tunnel media over TCP/TLS, but with an expected increase in latency.
+* **Consequences:**
+    * **Positive:** UDP's connectionless nature significantly reduces latency, and RTP over UDP includes mechanisms that allow for jitter resilience, which is paramount for a good user experience.
+    * **Negative:** UDP offers no guarantees of packet delivery, and can be more challenging to traverse NATs and firewalls, requiring sophisticated techniques.
+
+* **Farsi Version - ADR 2: پروتکل انتقال داده در زمان واقعی برای رسانه**
+    * **وضعیت:** پذیرفته شده
+    * **مقدمه:** برای پخش صوتی و تصویری در زمان واقعی، انتخاب پروتکل انتقال مناسب برای اطمینان از تأخیر پایین حیاتی است. TCP قابل اعتماد است اما تأخیر ایجاد می‌کند، در حالی که UDP سریع است اما غیرقابل اعتماد.
+    * **تصمیم:** ما عمدتاً از **UDP** برای جریان‌های رسانه صوتی و تصویری در زمان واقعی استفاده خواهیم کرد، به ویژه با بهره‌گیری از RTP (پروتکل انتقال در زمان واقعی) بر روی UDP. برای موقعیت‌هایی که UDP مسدود شده است، یک مکانیسم جایگزین برای تونل‌سازی رسانه بر روی TCP/TLS پیاده‌سازی خواهد شد، با این حال انتظار افزایش تأخیر وجود دارد.
+    * **پیامدها:**
+        * **مثبت:** ماهیت بدون اتصال UDP به طور قابل توجهی تأخیر را کاهش می‌دهد و RTP بر روی UDP شامل مکانیسم‌هایی است که امکان مقاومت در برابر لرزش را فراهم می‌کند، که برای تجربه کاربری خوب بسیار مهم است.
+        * **منفی:** UDP هیچ تضمینی برای تحویل بسته ارائه نمی‌دهد و عبور از NATها و فایروال‌ها می‌تواند چالش‌برانگیزتر باشد و نیاز به تکنیک‌های پیچیده‌ای دارد.
+
+---
+
+#### ADR 3: Data Store for Meeting Metadata and Chat History
+
+* **Status:** Accepted
+* **Context:** The system needs to store various types of data, from highly structured meeting configurations to high-volume chat history. The data store must be highly available and scalable.
+* **Decision:** We will implement a **polyglot persistence strategy**, using both **PostgreSQL** for core meeting metadata and user profiles and **Cassandra** for chat history. PostgreSQL is chosen for its strong consistency and querying capabilities for structured data, while Cassandra is ideal for high-volume, time-series data.
+* **Consequences:**
+    * **Positive:** Each database is optimized for its specific purpose, leading to optimal performance for both reads and writes. The system is also highly scalable, as Cassandra provides excellent horizontal scalability for chat data.
+    * **Negative:** Managing and maintaining two different database systems adds operational overhead, and ensuring cross-system consistency requires careful design.
+
+* **Farsi Version - ADR 3: ذخیره‌ساز داده برای فراداده جلسه و تاریخچه چت**
+    * **وضعیت:** پذیرفته شده
+    * **مقدمه:** سیستم نیاز به ذخیره‌سازی انواع مختلفی از داده‌ها، از پیکربندی‌های جلسه بسیار ساختاریافته تا تاریخچه چت با حجم بالا دارد. ذخیره‌ساز داده باید بسیار در دسترس و مقیاس‌پذیر باشد.
+    * **تصمیم:** ما یک استراتژی **ذخیره‌سازی چندزبانه** را پیاده‌سازی خواهیم کرد، که هم از **PostgreSQL** برای فراداده‌های اصلی جلسه و پروفایل‌های کاربر و هم از **Cassandra** برای تاریخچه چت استفاده می‌کند. PostgreSQL برای سازگاری قوی و قابلیت‌های پرس‌وجوی آن برای داده‌های ساختاریافته انتخاب شده است، در حالی که Cassandra برای داده‌های با حجم بالا و سری زمانی مانند چت ایده‌آل است.
+    * **پیامدها:**
+        * **مثبت:** هر پایگاه داده برای هدف خاص خود بهینه شده است، که منجر به عملکرد بهینه برای هم خواندن و هم نوشتن می‌شود. سیستم همچنین بسیار مقیاس‌پذیر است، زیرا Cassandra مقیاس‌پذیری افقی عالی را برای داده‌های چت فراهم می‌کند.
+        * **منفی:** مدیریت و نگهداری دو سیستم پایگاه داده مختلف سربار عملیاتی را اضافه می‌کند و اطمینان از سازگاری بین سیستمی نیازمند طراحی دقیق است.
+
+---
+
+#### ADR 4: Authentication and Authorization Mechanism
+
+* **Status:** Proposed
+* **Context:** A robust authentication and authorization system is fundamental to securing user access, meeting rooms, and data. The system must support user login, session management, and granular permission control.
+* **Decision:** We will implement an **OAuth 2.0 flow with OpenID Connect (OIDC)** as the primary authentication and authorization mechanism. This will involve an internal Identity Provider (IdP) that issues stateless tokens (JWTs) for authentication and authorization.
+* **Consequences:**
+    * **Positive:** Leveraging well-vetted, industry-standard protocols reduces security risks, and stateless tokens allow backend services to scale horizontally without maintaining session state.
+    * **Negative:** Implementing and managing an OIDC-compliant IdP is more complex than a basic custom system, and proper token management is critical to security and user experience.
+
+* **Farsi Version - ADR 4: مکانیسم احراز هویت و مجوزدهی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سیستم احراز هویت و مجوزدهی قوی برای ایمن‌سازی دسترسی کاربران، اتاق‌های جلسه و داده‌ها در پلتفرم Zoom اساسی است. سیستم باید از ورود کاربر، مدیریت نشست و کنترل دقیق مجوزها پشتیبانی کند.
+    * **تصمیم:** ما یک جریان **OAuth 2.0 با OpenID Connect (OIDC)** را به عنوان مکانیسم اصلی احراز هویت و مجوزدهی پیاده‌سازی خواهیم کرد. این شامل یک سرویس ارائه‌دهنده هویت (IdP) داخلی خواهد بود که توکن‌های بدون وضعیت (JWT) را برای احراز هویت و مجوزدهی صادر می‌کند.
+    * **پیامدها:**
+        * **مثبت:** استفاده از پروتکل‌های استاندارد صنعتی و بررسی‌شده، ریسک آسیب‌پذیری‌های امنیتی را کاهش می‌دهد و توکن‌های بدون وضعیت به سرویس‌های بک‌اند اجازه می‌دهند تا بدون نیاز به حفظ وضعیت نشست، به صورت افقی مقیاس‌پذیر شوند.
+        * **منفی:** پیاده‌سازی و مدیریت یک IdP سازگار با OIDC پیچیده‌تر از یک سیستم سفارشی ساده است و مدیریت صحیح توکن برای امنیت و تجربه کاربری حیاتی است.
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more comprehensive design for a global video conferencing platform, the following ADRs are proposed to cover **upgradability**, **privacy**, and **localization**.
+
+#### ADR 5: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** A video conferencing platform like Zoom is a mission-critical, continuous-delivery service. Deploying new features or optimizations (e.g., a new video codec) can be extremely risky. A "big-bang" release could disrupt meetings for millions of users, causing significant reputational and financial damage. A robust strategy for **upgradability** that minimizes risk is essential.
+* **Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major releases.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable it remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of services will first be deployed to a small subset of production instances and monitored closely. If the performance and error rates are stable, the new version will be gradually rolled out to all instances.
+    * **A/B Testing:** This approach also supports A/B testing of different features or algorithms to measure their impact on quality and user engagement before a full release.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage due to a bad deployment. Enables faster, more confident, and more frequent releases. Issues can be caught and contained with a small user base.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 5: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک پلتفرم کنفرانس ویدیویی مانند Zoom یک سرویس حیاتی با تحویل مداوم است. استقرار ویژگی‌ها یا بهینه‌سازی‌های جدید می‌تواند بسیار خطرناک باشد. یک انتشار "انفجاری" می‌تواند جلسات میلیون‌ها کاربر را مختل کند که باعث آسیب قابل توجهی به اعتبار و ضررهای مالی می‌شود. یک استراتژی قوی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند، ضروری است.
+    * **تصمیم:** ما از ترکیبی از **فلگ‌های ویژگی** و یک فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد آن را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک "سوئیچ قطع فوری" در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها ابتدا در زیرمجموعه کوچکی از نمونه‌های تولیدی مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام نمونه‌ها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین از تست A/B ویژگی‌ها یا الگوریتم‌های مختلف پشتیبانی می‌کند تا تأثیر آن‌ها بر کیفیت و تعامل کاربر قبل از انتشار کامل اندازه‌گیری شود.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به دلیل یک استقرار معیوب را به شدت کاهش می‌دهد. امکان انتشار سریع‌تر، با اطمینان بیشتر و مکرر را فراهم می‌کند. مشکلات را می‌توان با یک پایگاه کاربری کوچک شناسایی و مهار کرد.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
+
+---
+
+#### ADR 6: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** A video conferencing platform handles highly sensitive data, including private conversations (audio and video), chat messages, and personal information. Protecting this data is not only a legal requirement but is essential for maintaining user trust and preventing data breaches. The current design mentions services handling data but lacks a formal architectural decision on how to secure it.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach. This involves integrating privacy and security controls into every stage of the system development lifecycle. Key practices will include:
+    * **End-to-End Encryption:** For one-to-one and small group meetings, we will offer end-to-end encryption (E2EE) to ensure that only meeting participants can access the media content.
+    * **Data Encryption:** All data, including chat history and meeting metadata, will be encrypted both in transit (using TLS/HTTPS) and at rest (in our databases).
+    * **Access Control:** The principle of least privilege will be enforced. Access to media streams, chat history, and other sensitive data will be highly restricted and logged.
+    * **Data Minimization and Retention:** We will only collect and store data that is absolutely necessary for the functioning of the business and will have clear data retention policies for all user data.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of data breaches and misuse, ensures regulatory compliance, and builds user trust.
+    * **Negative:** Implementing E2EE can add complexity and may disable some server-side features like cloud recording or advanced analytics.
+
+* **Farsi Version - ADR 6: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک پلتفرم کنفرانس ویدیویی داده‌های بسیار حساسی را مدیریت می‌کند، از جمله مکالمات خصوصی (صوتی و تصویری)، پیام‌های چت و اطلاعات شخصی. حفاظت از این داده‌ها نه تنها یک الزام قانونی است، بلکه برای حفظ اعتماد کاربر و جلوگیری از نقض‌های داده اساسی است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد، اما به طور صریح یک استراتژی برای ایمن‌سازی آن ارائه نمی‌دهد.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را اتخاذ خواهیم کرد. این شامل یکپارچه‌سازی کنترل‌های حریم خصوصی و امنیتی در هر مرحله از چرخه عمر توسعه سیستم است. اقدامات کلیدی شامل:
+        * **رمزنگاری سرتاسری:** برای جلسات یک به یک و گروه‌های کوچک، ما رمزنگاری سرتاسری (E2EE) را ارائه خواهیم داد تا اطمینان حاصل شود که فقط شرکت‌کنندگان جلسه می‌توانند به محتوای رسانه دسترسی داشته باشند.
+        * **رمزنگاری داده‌ها:** تمام داده‌ها، از جمله تاریخچه چت و فراداده جلسه، در حال انتقال (با استفاده از TLS/HTTPS) و در حال سکون (در پایگاه‌های داده ما) رمزنگاری خواهند شد.
+        * **کنترل دسترسی:** اصل حداقل دسترسی اجرا خواهد شد. دسترسی به جریان‌های رسانه، تاریخچه چت و سایر داده‌های حساس به شدت محدود و ثبت خواهد شد.
+        * **به حداقل رساندن و نگهداری داده‌ها:** ما تنها داده‌هایی را جمع‌آوری و ذخیره خواهیم کرد که برای عملکرد کسب‌وکار کاملاً ضروری هستند و سیاست‌های نگهداری داده واضحی برای تمام داده‌های کاربر خواهیم داشت.
+    * **پیامدها:**
+        * **مثبت:** ریسک نقض داده‌ها و سوءاستفاده را به شدت کاهش می‌دهد، انطباق با مقررات را تضمین می‌کند و اعتماد کاربر را می‌سازد.
+        * **منفی:** پیاده‌سازی E2EE می‌تواند پیچیدگی اضافه کند و ممکن است برخی از ویژگی‌های سمت سرور مانند ضبط ابری یا تحلیل‌های پیشرفته را غیرفعال کند.
+
+---
+
+#### ADR 7: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** As a global platform, Zoom must cater to a worldwide user base. This requires supporting multiple languages for the user interface, chat messages, and meeting invitations, as well as handling different regional formats. The current design does not address a formal strategy for **internationalization (I18n)** and **localization (L10n)**.
+* **Decision:** We will design the system with **internationalization as a core principle**. This involves:
+    * **Externalized Content:** All user-facing text, including UI labels and meeting settings, will be stored in external files that support multiple languages.
+    * **Client-driven Locale:** The client application will automatically detect the user's preferred language and regional settings and pass this information to the backend in all API requests.
+    * **Locale-Aware Communication:** The Chat Service and Signaling Service will be designed to handle messages in multiple languages, including features like automated translation (if implemented).
+* **Consequences:**
+    * **Positive:** The platform can be easily and quickly adapted for new markets, which is crucial for business expansion. A localized experience significantly improves user engagement and satisfaction.
+    * **Negative:** Adds some initial architectural and development complexity and requires a dedicated process for managing translations and regional content.
+
+* **Farsi Version - ADR 7: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** به عنوان یک پلتفرم جهانی، Zoom باید به پایگاه کاربری سراسر جهان خدمات ارائه دهد. این امر نیازمند پشتیبانی از چندین زبان برای رابط کاربری، پیام‌های چت و دعوت‌های جلسه، و همچنین مدیریت فرمت‌های منطقه‌ای مختلف است. طراحی فعلی یک استراتژی رسمی برای **بین‌المللی‌سازی (I18n)** و **محلی‌سازی (L10n)** را در نظر نمی‌گیرد.
+    * **تصمیم:** ما سیستم را با **بین‌المللی‌سازی به عنوان یک اصل اصلی** طراحی خواهیم کرد. این شامل:
+        * **محتوای بیرونی:** تمام متن‌های قابل مشاهده برای کاربر، از جمله برچسب‌های رابط کاربری و تنظیمات جلسه، در فایل‌های خارجی ذخیره خواهند شد که از چندین زبان پشتیبانی می‌کنند.
+        * **لوکال کاربر محور:** برنامه مشتری به طور خودکار زبان و تنظیمات منطقه‌ای ترجیحی کاربر را تشخیص داده و این اطلاعات را در تمام درخواست‌های API به بک‌اند ارسال می‌کند.
+        * **ارتباط آگاه به لوکال:** سرویس چت و سرویس سیگنالینگ برای مدیریت پیام‌ها به زبان‌های مختلف، از جمله ویژگی‌هایی مانند ترجمه خودکار (در صورت پیاده‌سازی)، طراحی خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** پلتفرم می‌تواند به آسانی و به سرعت برای بازارهای جدید تطبیق یابد، که برای گسترش کسب‌وکار حیاتی است. یک تجربه محلی‌سازی شده تعامل و رضایت کاربر را به شدت افزایش می‌دهد.
+        * **منفی:** مقداری پیچیدگی اولیه در معماری و توسعه اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و محتوای منطقه‌ای است.
