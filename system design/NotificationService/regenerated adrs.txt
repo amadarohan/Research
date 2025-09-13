@@ -1,0 +1,168 @@
+The provided Notification Service system design document outlines four Architecture Decision Records (ADRs) that address key non-functional requirements. The existing ADRs focus on **scalability**, **resilience**, and **maintainability**. For example, ADR 1 details an asynchronous, queue-based architecture to decouple the ingestion and delivery processes, ensuring the system remains stable under heavy load. ADR 2 introduces a robust retry mechanism to ensure reliable delivery even in the face of transient failures. ADR 3 proposes a centralized templating engine for dynamic content, improving flexibility and reducing development time. Finally, ADR 4 addresses idempotency and deduplication to prevent duplicate notifications from reaching users.
+
+However, a complete system design for a notification service needs to address other non-functional requirements that are not explicitly covered in the existing ADRs. The current document lacks a formal strategy for **upgradability**, **security** and **privacy**, and **monitoring and observability**. A robust system should be designed to allow for safe and continuous feature releases, protect sensitive data, and provide comprehensive insights into its health and performance.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use an Asynchronous, Queue-Based Architecture for Decoupling
+
+* **Status:** Proposed
+* **Context:** A notification service must handle a high volume of requests, and delivery can be slow or unreliable due to external factors. [cite_start]A synchronous architecture would cause cascading failures and instability. [cite: 168, 169]
+* **Decision:** We will use an asynchronous, queue-based architecture with a durable message queue like Kafka. [cite_start]The Ingestion Service will publish notification requests to the queue, and separate worker services will consume messages asynchronously to handle delivery. [cite: 171, 172, 173]
+* **Consequences:**
+    * [cite_start]**Positive:** The system is decoupled from the delivery mechanism, highly resilient to failures, and allows for independent scaling of ingestion and delivery components. [cite: 175, 177, 178]
+    * [cite_start]**Negative:** Introduces a small amount of latency and adds operational complexity for managing the message queue. [cite: 181, 182]
+
+* **Farsi Version - ADR 1: استفاده از معماری ناهمگام مبتنی بر صف برای کاهش وابستگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سرویس اعلان باید حجم بالایی از درخواست‌ها را مدیریت کند و فرآیند تحویل ممکن است به دلیل عوامل خارجی کند یا غیرقابل اعتماد باشد. [cite_start]یک معماری همگام باعث شکست‌های زنجیره‌ای و بی‌ثباتی سیستم می‌شود. [cite: 168, 169]
+    * **تصمیم:** ما یک معماری ناهمگام مبتنی بر صف را با یک صف پیام پایدار (مانند Kafka) پیاده‌سازی خواهیم کرد. [cite_start]سرویس دریافت درخواست‌های اعلان را به صف منتشر خواهد کرد و مجموعه‌ای از سرویس‌های کاری به صورت ناهمگام پیام‌ها را از این صف دریافت کرده و تحویل واقعی را مدیریت خواهند کرد. [cite: 171, 172, 173]
+    * **پیامدها:**
+        * [cite_start]**مثبت:** سرویس از مکانیسم تحویل کاملاً جدا می‌شود، در برابر خطاها بسیار مقاوم است و امکان مقیاس‌بندی مستقل فرآیندهای دریافت و تحویل را فراهم می‌کند. [cite: 175, 177, 178]
+        * [cite_start]**منفی:** مقداری تأخیر جزئی ایجاد می‌کند و سربار عملیاتی برای مدیریت صف پیام را به همراه دارد. [cite: 181, 182]
+
+---
+
+#### ADR 2: Reliable Delivery with Retry Mechanism and Dead-Letter Queues
+
+* **Status:** Proposed
+* **Context:** Notification delivery can fail due to external factors like provider outages or invalid data. [cite_start]Simply dropping failed messages is unacceptable for critical notifications. [cite: 193]
+* **Decision:** We will implement a robust delivery mechanism with an exponential backoff retry strategy and a Dead-Letter Queue (DLQ). [cite_start]Failed messages will be retried with increasing intervals, and if all attempts are exhausted or the failure is permanent, the message will be moved to a DLQ for investigation. [cite: 196, 197, 198]
+* **Consequences:**
+    * [cite_start]**Positive:** Significantly increases reliability by ensuring critical notifications are eventually delivered, prevents problematic messages from blocking the pipeline, and provides visibility into delivery failures. [cite: 202, 203]
+    * [cite_start]**Negative:** Adds latency for retried messages and increases operational complexity for managing retry policies and the DLQ. [cite: 206]
+
+* **Farsi Version - ADR 2: تحویل قابل اعتماد با مکانیسم تلاش مجدد و صف‌های پیام‌های ناموفق**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** تحویل اعلان‌ها ممکن است به دلیل عوامل خارجی مانند قطعی ارائه‌دهنده یا داده‌های نامعتبر با شکست مواجه شود. [cite_start]رها کردن ساده پیام‌های ناموفق برای اعلان‌های حیاتی غیرقابل قبول است. [cite: 193]
+    * **تصمیم:** ما یک مکانیسم تحویل قابل اعتماد با استراتژی تلاش مجدد با تأخیر نمایی و یک صف پیام‌های ناموفق (DLQ) پیاده‌سازی خواهیم کرد. [cite_start]پیام‌های ناموفق با فواصل زمانی افزایشی مجدداً تلاش می‌شوند و اگر تمام تلاش‌ها ناموفق باشد یا شکست دائمی باشد، پیام به یک DLQ اختصاصی منتقل خواهد شد. [cite: 196, 197, 198]
+    * **پیامدها:**
+        * [cite_start]**مثبت:** با تضمین تحویل نهایی اعلان‌های حیاتی، قابلیت اطمینان را به شدت افزایش می‌دهد، از مسدود شدن خط لوله توسط پیام‌های مشکل‌دار جلوگیری می‌کند و دید واضحی از شکست‌های تحویل فراهم می‌آورد. [cite: 202, 203]
+        * [cite_start]**منفی:** تأخیر را برای پیام‌هایی که مجدداً تلاش می‌شوند افزایش می‌دهد و پیچیدگی عملیاتی برای مدیریت سیاست‌های تلاش مجدد و DLQ را اضافه می‌کند. [cite: 206]
+
+---
+
+#### ADR 3: Templating and Personalization Engine for Dynamic Content
+
+* **Status:** Proposed
+* **Context:** Notifications often need to include dynamic data and have different content based on user or notification type. [cite_start]Hardcoding messages is unmaintainable and inflexible. [cite: 215, 216]
+* **Decision:** We will implement a centralized Templating and Personalization Engine within the Processing Service. Templates will be stored in a Configuration Store and will use placeholders for dynamic data. [cite_start]This will allow for conditional content rendering, A/B testing, and localization. [cite: 218, 221]
+* **Consequences:**
+    * [cite_start]**Positive:** Provides flexibility and agility for non-developers to manage content, enables personalization, ensures consistency, and simplifies multilingual support. [cite: 224, 225, 226]
+    * [cite_start]**Negative:** Adds significant complexity to the Processing Service and a small performance overhead for rendering templates. [cite: 228]
+
+* **Farsi Version - ADR 3: موتور قالب‌سازی و شخصی‌سازی برای محتوای پویا**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** اعلان‌ها به ندرت ایستا هستند و اغلب باید شامل داده‌های پویا (مانند نام مشتری، شماره سفارش) باشند و ممکن است بر اساس نوع اعلان، ترجیحات کاربر یا زبان، طرح‌ها و محتوای متفاوتی داشته باشند. [cite_start]کدنویسی سخت‌افزاری پیام‌های اعلان غیرقابل نگهداری و انعطاف‌ناپذیر است. [cite: 215, 216]
+    * **تصمیم:** ما یک موتور قالب‌سازی و شخصی‌سازی متمرکز را در سرویس پردازش پیاده‌سازی خواهیم کرد. قالب‌های اعلان در یک فروشگاه پیکربندی ذخیره خواهند شد و از متغیرها برای داده‌های پویا استفاده خواهند کرد. [cite_start]این امر امکان رندرینگ محتوای شرطی، تست A/B و محلی‌سازی را فراهم می‌کند. [cite: 218, 221]
+    * **پیامدها:**
+        * [cite_start]**مثبت:** انعطاف‌پذیری و چابکی را برای مدیریت محتوای اعلان‌ها فراهم می‌کند، شخصی‌سازی را ممکن می‌سازد، سازگاری را تضمین می‌کند و مدیریت محتوای چندزبانه را ساده می‌سازد. [cite: 224, 225, 226]
+        * [cite_start]**منفی:** پیچیدگی قابل توجهی را به سرویس پردازش اضافه می‌کند و یک سربار عملکردی جزئی برای رندرینگ قالب‌ها ایجاد می‌کند. [cite: 228]
+
+---
+
+#### ADR 4: Idempotency and Deduplication for Notification Requests
+
+* **Status:** Proposed
+* **Context:** In a distributed, asynchronous system, duplicate messages can be sent due to network retries or message broker redelivery. [cite_start]Sending duplicate notifications is annoying and can be harmful to users. [cite: 236]
+* **Decision:** We will implement idempotency and deduplication at the Ingestion Service level. Client applications must include a unique idempotency key with every request. [cite_start]The Ingestion Service will use a fast, in-memory store like Redis to check for recently seen keys and ignore duplicate requests. [cite: 239, 241, 242]
+* **Consequences:**
+    * [cite_start]**Positive:** Prevents duplicate notifications from reaching users and makes the system resilient to retries and re-delivery issues. [cite: 245]
+    * [cite_start]**Negative:** Requires client applications to provide an idempotency key and adds complexity and a small amount of latency to the ingestion service. [cite: 248]
+
+* **Farsi Version - ADR 4: ایزولگی و حذف تکرار برای درخواست‌های اعلان**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** در یک سیستم توزیع‌شده و ناهمگام، پیام‌ها ممکن است به دلیل تلاش‌های مجدد شبکه یا بازتحویل واسط پیام، تکرار شوند. [cite_start]ارسال اعلان‌های تکراری می‌تواند آزاردهنده، گیج‌کننده یا حتی برای کاربران مضر باشد. [cite: 236]
+    * **تصمیم:** ما ایزولگی و حذف تکرار را در سطح سرویس دریافت پیاده‌سازی خواهیم کرد. برنامه‌های مشتری ملزم به درج یک کلید ایزولگی منحصربه‌فرد در هر درخواست اعلان خواهند بود. [cite_start]سرویس دریافت از یک فروشگاه سریع و در حافظه (مانند Redis) برای بررسی کلیدهای دیده شده اخیر استفاده خواهد کرد و درخواست‌های تکراری را نادیده می‌گیرد. [cite: 239, 241, 242]
+    * **پیامدها:**
+        * [cite_start]**مثبت:** از رسیدن اعلان‌های تکراری به کاربران جلوگیری می‌کند و سیستم را در برابر تلاش‌های مجدد و مسائل بازتحویل مقاوم می‌سازد. [cite: 245]
+        * [cite_start]**منفی:** نیازمند ارائه یک کلید ایزولگی از سوی برنامه‌های مشتری است و پیچیدگی و تأخیر جزئی را به سرویس دریافت اضافه می‌کند. [cite: 248]
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more comprehensive design for a scalable and reliable notification service, the following ADRs are proposed to cover **upgradability**, **security**, and **monitoring**.
+
+#### ADR 5: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** As a core infrastructure component, the Notification Service must be highly available. Deploying new features or updates can be risky, and a faulty deployment could disrupt critical notifications for all client applications. A "big-bang" release is not an acceptable strategy. A robust strategy for **upgradability** that minimizes risk is essential.
+* **Decision:** We will use **feature flags** and a **gradual rollout (canary deployment)** process for all major releases and updates.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable it remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of our worker services will be deployed to a small subset of production instances and monitored closely. If the performance and error rates are stable, the new version will be gradually rolled out to all instances.
+    * **A/B Testing:** This approach also supports A/B testing of different message templates or delivery logic to optimize engagement.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage due to a bad deployment. Enables faster, more confident, and more frequent releases. Issues can be caught and contained with a small user base.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 5: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** به عنوان یک جزء زیرساختی اصلی، سرویس اعلان باید بسیار در دسترس باشد. استقرار ویژگی‌ها یا به‌روزرسانی‌های جدید می‌تواند خطرناک باشد و یک استقرار معیوب می‌تواند اعلان‌های حیاتی را برای تمام برنامه‌های مشتری مختل کند. انتشار "انفجاری" یک استراتژی قابل قبول نیست. یک استراتژی قوی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند، ضروری است.
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشارها و به‌روزرسانی‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد آن را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک سوئیچ قطع فوری در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌های کاری ما ابتدا در زیرمجموعه کوچکی از نمونه‌های تولیدی مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام نمونه‌ها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین از تست A/B الگوهای پیام یا منطق تحویل متفاوت برای بهینه‌سازی تعامل پشتیبانی می‌کند.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به دلیل یک استقرار بد به طور چشمگیری کاهش می‌یابد. امکان انتشار سریع‌تر، با اطمینان بیشتر و مکرر را فراهم می‌کند. مشکلات را می‌توان با یک پایگاه کاربری کوچک شناسایی و مهار کرد.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
+
+---
+
+#### ADR 6: Data Privacy and Security
+
+* **Status:** Proposed
+* **Context:** The Notification Service processes sensitive data, including user email addresses, phone numbers, and potentially private message content. Protecting this data is a legal and ethical requirement. The current design mentions processing and storing data but does not explicitly address how to secure it.
+* **Decision:** We will adopt a **"Security by Design"** approach to protect sensitive data. Key decisions include:
+    * **Data Encryption:** All notification data, especially recipient information, will be encrypted both in transit (using TLS/HTTPS) and at rest (in the Message Queue and Configuration Store).
+    * **Data Minimization:** We will only store essential data (e.g., recipient ID, message template name, dynamic data payload) and not persist private message content if it is not required for a specific business purpose.
+    * **Access Control:** We will enforce the principle of least privilege. Only services that absolutely need to access sensitive data (e.g., the Sender Services) will have the necessary credentials.
+    * **Audit Logging:** We will implement robust logging to track and audit all access and attempts to process sensitive data.
+* **Consequences:**
+    * **Positive:** Ensures compliance with data protection laws, builds user trust, and protects the system from internal and external threats.
+    * **Negative:** Adds complexity to the ingestion, processing, and storage layers, and may introduce a minor performance overhead for encryption.
+
+* **Farsi Version - ADR 6: حریم خصوصی و امنیت داده‌ها**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** سرویس اعلان داده‌های حساسی را پردازش می‌کند، از جمله آدرس‌های ایمیل کاربران، شماره تلفن‌ها و به طور بالقوه محتوای پیام‌های خصوصی. حفاظت از این داده‌ها یک الزام قانونی و اخلاقی است. طراحی فعلی به پردازش و ذخیره‌سازی داده‌ها اشاره دارد اما به طور صریح به نحوه ایمن‌سازی آن‌ها نمی‌پردازد.
+    * **تصمیم:** ما رویکرد **"امنیت از طریق طراحی"** را برای حفاظت از داده‌های حساس اتخاذ خواهیم کرد. تصمیمات کلیدی شامل:
+        * **رمزنگاری داده‌ها:** تمام داده‌های اعلان، به ویژه اطلاعات گیرنده، در حال انتقال (با استفاده از TLS/HTTPS) و در حال سکون (در صف پیام و فروشگاه پیکربندی) رمزنگاری خواهند شد.
+        * **به حداقل رساندن داده‌ها:** ما فقط داده‌های ضروری (مانند شناسه گیرنده، نام قالب پیام، محتوای داده پویا) را ذخیره خواهیم کرد و محتوای پیام خصوصی را در صورت عدم نیاز برای یک هدف تجاری خاص، پایدار نخواهیم کرد.
+        * **کنترل دسترسی:** ما اصل حداقل دسترسی را اجرا خواهیم کرد. تنها سرویس‌هایی که مطلقاً نیاز به دسترسی به داده‌های حساس دارند (مانند سرویس‌های ارسال‌کننده) اعتبارنامه‌های لازم را خواهند داشت.
+        * **ثبت حسابرسی:** ما یک ثبت قوی را برای ردیابی و حسابرسی تمام دسترسی‌ها و تلاش‌ها برای پردازش داده‌های حساس پیاده‌سازی خواهیم کرد.
+    * **پیامدها:**
+        * **مثبت:** انطباق با قوانین حفاظت از داده‌ها را تضمین می‌کند، اعتماد کاربر را می‌سازد و سیستم را از تهدیدات داخلی و خارجی محافظت می‌کند.
+        * **منفی:** پیچیدگی را به لایه‌های دریافت، پردازش و ذخیره‌سازی اضافه می‌کند و ممکن است یک سربار عملکردی جزئی برای رمزنگاری ایجاد کند.
+
+---
+
+#### ADR 7: Centralized Monitoring and Logging
+
+* **Status:** Proposed
+* **Context:** In a distributed, asynchronous system, tracing a notification's journey from client request to final delivery is a major challenge. The absence of comprehensive monitoring and logging would make debugging failures, identifying bottlenecks, and understanding system health nearly impossible.
+* **Decision:** We will implement a centralized monitoring and logging platform.
+    * **Structured Logging:** All services will emit structured logs with a consistent format and a correlation ID for each notification request. This allows us to trace a single request's journey through all services and components.
+    * **Metrics Collection:** We will collect key metrics such as request latency, success/failure rates, queue depths, and worker throughput. This data will be fed into a time-series database for real-time dashboards and alerting.
+    * **Distributed Tracing:** We will use a distributed tracing system to visualize the flow of requests and messages across services, helping to pinpoint latency bottlenecks.
+    * **Alerting:** We will set up automated alerts based on predefined thresholds for critical metrics (e.g., increased error rates, growing queue depth) to notify administrators of potential issues.
+* **Consequences:**
+    * **Positive:** Provides deep visibility into the system's performance and health, enables faster debugging and troubleshooting, and allows for proactive issue detection.
+    * **Negative:** Adds significant operational overhead and cost for running and maintaining the monitoring and logging infrastructure.
+
+* **Farsi Version - ADR 7: نظارت و ثبت مرکزی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** در یک سیستم توزیع‌شده و ناهمگام، ردیابی مسیر یک اعلان از درخواست مشتری تا تحویل نهایی یک چالش بزرگ است. عدم وجود نظارت و ثبت جامع، اشکال‌زدایی خطاها، شناسایی گلوگاه‌ها و درک سلامت سیستم را تقریباً غیرممکن می‌کند.
+    * **تصمیم:** ما یک پلتفرم نظارت و ثبت مرکزی را پیاده‌سازی خواهیم کرد.
+        * **ثبت ساختاریافته:** تمام سرویس‌ها گزارش‌های ساختاریافته با یک فرمت ثابت و یک شناسه همبستگی برای هر درخواست اعلان منتشر خواهند کرد. این به ما اجازه می‌دهد مسیر یک درخواست واحد را از طریق تمام سرویس‌ها و اجزا ردیابی کنیم.
+        * **جمع‌آوری معیارها:** ما معیارهای کلیدی مانند تأخیر درخواست، نرخ موفقیت/شکست، عمق صف و توان عملیاتی کارگر را جمع‌آوری خواهیم کرد. این داده‌ها به یک پایگاه داده سری زمانی برای داشبوردهای در زمان واقعی و هشداردهی ارسال خواهند شد.
+        * **ردیابی توزیع‌شده:** ما از یک سیستم ردیابی توزیع‌شده برای بصری‌سازی جریان درخواست‌ها و پیام‌ها در سراسر سرویس‌ها استفاده خواهیم کرد تا به شناسایی گلوگاه‌های تأخیر کمک کند.
+        * **هشداردهی:** ما هشدارهای خودکار را بر اساس آستانه‌های از پیش تعریف‌شده برای معیارهای حیاتی (مانند افزایش نرخ خطاها، افزایش عمق صف) تنظیم خواهیم کرد تا مدیران را از مشکلات احتمالی مطلع کنیم.
+    * **پیامدها:**
+        * **مثبت:** دید عمیقی را به عملکرد و سلامت سیستم فراهم می‌کند، اشکال‌زدایی و عیب‌یابی سریع‌تر را ممکن می‌سازد و به شناسایی پیشگیرانه مشکلات کمک می‌کند.
+        * **منفی:** سربار عملیاتی و هزینه‌های قابل توجهی برای راه‌اندازی و نگهداری زیرساخت نظارت و ثبت اضافه می‌کند.
