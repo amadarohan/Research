@@ -1,0 +1,164 @@
+The provided Search Engine system design document outlines four Architecture Decision Records (ADRs) that address key non-functional requirements. The existing ADRs focus on **scalability**, **performance**, and **efficiency**. For instance, ADR 1 proposes a polyglot persistence approach to handle the massive scale of data. ADR 2 discusses a hybrid crawling strategy to balance web coverage and data freshness. ADR 3 suggests a multi-factor ranking algorithm to improve the relevance of search results. Finally, ADR 4 introduces a hybrid indexing strategy to balance resource usage with data freshness.
+
+However, a complete system design for a global search engine needs to address other crucial non-functional requirements that are not explicitly covered in the existing ADRs. The current document lacks a formal strategy for **localization**, **privacy**, and **upgradability**. A robust and comprehensive system must be designed to cater to a global audience in various languages, protect sensitive user data, and allow for safe and continuous feature releases.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Distributed, Polyglot Persistence Approach for Data Storage
+
+* **Status:** Proposed
+* [cite_start]**Context:** A web search engine must handle a massive scale of data, and a single database would become a severe bottleneck for both reads and writes[cite: 37, 38].
+* [cite_start]**Decision:** We will use a polyglot persistence strategy, with multiple data stores tailored to specific needs[cite: 40]. [cite_start]This includes a custom-built, distributed **Inverted Index** for fast lookups, a distributed file system like **Cassandra or HDFS** for storing raw documents, and a **message queue** for asynchronous data flow[cite: 41, 42, 43].
+* **Consequences:**
+    * [cite_start]**Positive:** Each store is optimized for its purpose, leading to optimal performance for both indexing and searching[cite: 44]. [cite_start]The system is highly scalable, and the failure of one data store doesn't necessarily affect the whole system[cite: 46].
+    * [cite_start]**Negative:** Managing multiple distributed data stores significantly increases operational and development complexity, and maintaining strong consistency can be challenging[cite: 48, 49].
+
+* **Farsi Version - ADR 1: استفاده از رویکرد ذخیره‌سازی توزیع‌شده و چندزبانه برای داده‌ها**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** یک موتور جستجوی وب باید حجم عظیمی از داده‌ها را مدیریت کند، و یک پایگاه داده واحد به یک گلوگاه جدی برای هم خواندن و هم نوشتن تبدیل خواهد شد[cite: 37, 38].
+    * [cite_start]**تصمیم:** ما یک استراتژی ذخیره‌سازی چندزبانه را اتخاذ خواهیم کرد، که از چندین ذخیره‌ساز داده متناسب با نیازهای خاص هر جزء سیستم استفاده می‌کند[cite: 40]. [cite_start]این شامل یک **نمایه‌ساز معکوس (Inverted Index)** سفارشی و توزیع‌شده برای جستجوهای سریع، یک سیستم فایل توزیع‌شده مانند **Cassandra یا HDFS** برای ذخیره اسناد خام و یک **صف پیام** برای جریان داده‌های ناهمگام است[cite: 41, 42, 43].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** هر ذخیره‌ساز داده برای هدف خاص خود بهینه شده است، که منجر به عملکرد بهینه برای نمایه‌سازی و جستجو می‌شود[cite: 44]. [cite_start]سیستم بسیار مقیاس‌پذیر است و خرابی یک ذخیره‌ساز داده لزوماً بر کل سیستم تأثیر نمی‌گذارد[cite: 46].
+        * [cite_start]**منفی:** مدیریت چندین ذخیره‌ساز داده توزیع‌شده، پیچیدگی عملیاتی و توسعه را به شدت افزایش می‌دهد و حفظ سازگاری قوی می‌تواند چالش‌برانگیز باشد[cite: 48, 49].
+
+---
+
+#### ADR 2: Web Crawling Strategy for Freshness and Coverage
+
+* **Status:** Proposed
+* [cite_start]**Context:** The utility of a search engine is tied to the freshness and comprehensiveness of its index, and a naive crawling approach can be inefficient[cite: 56, 57]. [cite_start]The strategy must balance covering the vastness of the web with prioritizing important and frequently updated content[cite: 58, 59].
+* [cite_start]**Decision:** We will use a hybrid crawling strategy that combines breadth-first traversal with a sophisticated prioritization mechanism[cite: 60]. [cite_start]A central URL queue will prioritize URLs based on factors like PageRank, update frequency, and recency of last crawl[cite: 62, 63].
+* **Consequences:**
+    * [cite_start]**Positive:** Improves freshness by re-indexing dynamic content more frequently [cite: 67][cite_start], ensures wide coverage through breadth-first exploration [cite: 68][cite_start], and is more resource-efficient[cite: 69].
+    * [cite_start]**Negative:** The implementation is a complex engineering task [cite: 71][cite_start], and the prioritization algorithm needs careful tuning to avoid bias[cite: 72].
+
+* **Farsi Version - ADR 2: استراتژی خزیدن وب برای تازگی و پوشش‌دهی**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** کارایی یک موتور جستجو مستقیماً به تازگی و جامعیت نمایه‌ساز آن بستگی دارد، و یک رویکرد ساده برای خزیدن می‌تواند ناکارآمد باشد[cite: 56, 57]. [cite_start]استراتژی باید بین پوشش‌دهی وسعت وب و اولویت‌بندی محتوای مهم و با به‌روزرسانی مکرر تعادل ایجاد کند[cite: 58, 59].
+    * [cite_start]**تصمیم:** ما یک استراتژی خزیدن ترکیبی را پیاده‌سازی خواهیم کرد که پیمایش اول-به-عرض را با یک مکانیسم اولویت‌بندی پیچیده ترکیب می‌کند[cite: 60]. [cite_start]یک صف URL مرکزی، URLها را بر اساس عواملی مانند امتیاز PageRank، فرکانس به‌روزرسانی و زمان آخرین خزیدن اولویت‌بندی خواهد کرد[cite: 62, 63].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** تازگی را با نمایه‌سازی مجدد محتوای پویا به صورت مکرر بهبود می‌بخشد [cite: 67][cite_start]، پوشش گسترده‌ای را از طریق کاوش اول-به-عرض تضمین می‌کند [cite: 68] [cite_start]و از نظر منابع کارآمدتر است[cite: 69].
+        * [cite_start]**منفی:** پیاده‌سازی یک کار مهندسی پیچیده است [cite: 71] [cite_start]و الگوریتم اولویت‌بندی برای جلوگیری از سوگیری نیاز به تنظیم دقیق دارد[cite: 72].
+
+---
+
+#### ADR 3: Multi-Factor Ranking Algorithm for Search Results Relevance
+
+* **Status:** Proposed
+* **Context:** The goal of a search engine is to provide the most relevant results. [cite_start]A simple keyword match is insufficient for modern search, which requires understanding query intent and document quality[cite: 79, 80].
+* [cite_start]**Decision:** We will use a multi-factor ranking algorithm driven by machine learning (ML) models[cite: 81]. [cite_start]The algorithm will incorporate a wide array of signals, including core relevance, authority signals (e.g., PageRank), freshness, and user engagement[cite: 82, 83, 84].
+* **Consequences:**
+    * [cite_start]**Positive:** Leveraging ML and numerous signals allows for highly accurate and relevant search results, which enhances user satisfaction[cite: 88]. [cite_start]The model can also adapt to new data and is more resilient to black-hat SEO techniques[cite: 89].
+    * [cite_start]**Negative:** Training large-scale ML models is computationally expensive [cite: 92][cite_start], and the models can be "black boxes" that are difficult to debug or explain[cite: 93].
+
+* **Farsi Version - ADR 3: الگوریتم رتبه‌بندی چند عاملی برای ارتباط نتایج جستجو**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** هدف نهایی یک موتور جستجو، ارائه مرتبط‌ترین نتایج برای یک پرس‌وجوی کاربر است. [cite_start]تطبیق ساده کلمات کلیدی برای جستجوی مدرن کافی نیست، زیرا نیازمند درک قصد پرس‌وجو و کیفیت سند است[cite: 79, 80].
+    * [cite_start]**تصمیم:** ما از یک الگوریتم رتبه‌بندی چند عاملی استفاده خواهیم کرد که عمدتاً توسط مدل‌های یادگیری ماشین (ML) هدایت می‌شود[cite: 81]. [cite_start]این الگوریتم طیف گسترده‌ای از سیگنال‌ها را در بر می‌گیرد، از جمله ارتباط اصلی، سیگنال‌های اعتبار (مانند امتیاز PageRank)، تازگی و تعامل کاربر[cite: 82, 83, 84].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** استفاده از ML و سیگنال‌های متعدد امکان نتایج جستجوی بسیار دقیق و مرتبط را فراهم می‌کند که رضایت کاربر را به شدت افزایش می‌دهد[cite: 88]. [cite_start]مدل می‌تواند با داده‌های جدید سازگار شود و در برابر تکنیک‌های SEO مخرب مقاوم‌تر است[cite: 89].
+        * [cite_start]**منفی:** آموزش مدل‌های ML در مقیاس بزرگ پرهزینه است [cite: 92] [cite_start]و مدل‌ها می‌توانند "جعبه سیاه" باشند که اشکال‌زدایی یا توضیح آن‌ها دشوار است[cite: 93].
+
+---
+
+#### ADR 4: Hybrid Indexing Strategy for Freshness and Efficiency
+
+* **Status:** Proposed
+* [cite_start]**Context:** The Inverted Index must be continually updated, but a full re-index is computationally expensive and slow[cite: 101, 102]. [cite_start]A strategy is needed to balance the need for up-to-date results with resource requirements[cite: 103].
+* [cite_start]**Decision:** We will use a hybrid indexing strategy that combines a large-scale **batch indexing** pipeline for the majority of the web with a low-latency **real-time indexing** pipeline for critical, rapidly changing content[cite: 104]. [cite_start]The real-time pipeline will handle newly discovered pages and updates, which are then merged with the main batch index[cite: 107].
+* **Consequences:**
+    * [cite_start]**Positive:** Improves freshness for critical content [cite: 110][cite_start], optimizes resource usage by focusing on what needs immediate updates [cite: 111][cite_start], and both pipelines can scale independently[cite: 112].
+    * [cite_start]**Negative:** Adds significant complexity to manage two distinct pipelines [cite: 114] [cite_start]and their interaction, and it is still not instantaneous for all content[cite: 117].
+
+* **Farsi Version - ADR 4: استراتژی نمایه‌سازی ترکیبی برای تازگی و کارایی**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** نمایه‌ساز معکوس باید به طور مداوم با صفحات وب جدید و تغییریافته به‌روزرسانی شود تا نتایج جستجو تازه باشند، اما نمایه‌سازی مجدد کامل از نظر محاسباتی پرهزینه و کند است[cite: 101, 102]. [cite_start]یک استراتژی برای ایجاد تعادل بین نیاز به نتایج به‌روز و منابع عظیم مورد نیاز برای نمایه‌سازی لازم است[cite: 103].
+    * [cite_start]**تصمیم:** ما یک استراتژی نمایه‌سازی ترکیبی را پیاده‌سازی خواهیم کرد که نمایه‌سازی دسته‌ای (batch) در مقیاس بزرگ را برای بخش عمده‌ای از وب، با یک خط لوله نمایه‌سازی در زمان واقعی با تأخیر پایین برای محتوای حیاتی و با تغییر سریع ترکیب می‌کند[cite: 104]. [cite_start]خط لوله در زمان واقعی، صفحات تازه کشف‌شده و به‌روزرسانی‌ها را مدیریت خواهد کرد که سپس با نمایه‌ساز دسته‌ای اصلی ادغام می‌شوند[cite: 107].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** تازگی محتوای حیاتی را بهبود می‌بخشد [cite: 110][cite_start]، استفاده از منابع را با تمرکز بر آنچه نیاز به به‌روزرسانی فوری دارد بهینه می‌کند [cite: 111] [cite_start]و هر دو خط لوله می‌توانند به صورت مستقل مقیاس‌پذیر شوند[cite: 112].
+        * [cite_start]**منفی:** مدیریت دو خط لوله نمایه‌سازی مجزا و تعامل آن‌ها پیچیدگی قابل توجهی را اضافه می‌کند [cite: 114] [cite_start]و برای تمام محتوا فوری نیست[cite: 117].
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more robust and comprehensive design for a global search engine, the following ADRs are proposed to cover **privacy**, **localization**, and **upgradability**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** A web search engine handles sensitive user data, including search queries, click history, and potentially location information. Protecting this data is not only a legal requirement but is essential for building user trust. The current design mentions services handling data but lacks a formal architectural decision on how to secure it.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach. This involves integrating privacy and security controls into every stage of the system development lifecycle. Key practices will include:
+    * **Data Encryption:** All sensitive data, especially user queries and click history, will be encrypted both in transit (using HTTPS/TLS) and at rest (in databases and logs).
+    * **Data Minimization:** We will only collect and store data that is absolutely necessary for the functioning of the business.
+    * **Access Control:** We will enforce the principle of least privilege, ensuring that services and employees only have access to the data they absolutely need.
+    * **Anonymization:** For analytics and machine learning tasks, remove or obfuscate personally identifiable information (PII).
+* **Consequences:**
+    * **Positive:** Ensures legal and regulatory compliance, builds user trust, and significantly reduces the risk of data breaches and misuse.
+    * **Negative:** Adds engineering and operational complexity and may introduce a small amount of latency due to encryption/decryption.
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک موتور جستجوی وب داده‌های حساس کاربران را، از جمله پرس‌وجوهای جستجو، سابقه کلیک‌ها و احتمالاً اطلاعات موقعیت مکانی، مدیریت می‌کند. حفاظت از این داده‌ها نه تنها یک الزام قانونی است، بلکه برای ایجاد اعتماد کاربر نیز اساسی است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد، اما فاقد تصمیم معماری رسمی در مورد نحوه ایمن‌سازی آن است.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را اتخاذ خواهیم کرد. این شامل یکپارچه‌سازی کنترل‌های حریم خصوصی و امنیتی در هر مرحله از چرخه عمر توسعه سیستم است. اقدامات کلیدی شامل:
+        * **رمزنگاری داده‌ها:** تمام داده‌های حساس، به ویژه پرس‌وجوهای کاربر و سابقه کلیک‌ها، در حال انتقال (با استفاده از HTTPS/TLS) و در حال سکون (در پایگاه‌های داده و گزارش‌ها) رمزنگاری خواهند شد.
+        * **به حداقل رساندن داده‌ها:** تنها داده‌هایی که برای عملکرد کسب‌وکار کاملاً ضروری هستند، جمع‌آوری و ذخیره می‌شوند.
+        * **کنترل دسترسی:** اصل حداقل دسترسی پیاده‌سازی خواهد شد، که اطمینان می‌دهد سرویس‌ها و کارمندان تنها به داده‌هایی که مطلقاً نیاز دارند دسترسی داشته باشند.
+        * **ناشناس‌سازی:** برای کارهای تحلیلی و یادگیری ماشین، اطلاعات قابل شناسایی شخصی (PII) حذف یا پنهان خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** انطباق قانونی و مقرراتی را تضمین می‌کند، اعتماد کاربر را می‌سازد و ریسک نقض داده‌ها و سوءاستفاده را به شدت کاهش می‌دهد.
+        * **منفی:** پیچیدگی مهندسی و عملیاتی را اضافه می‌کند و ممکن است مقداری تأخیر به دلیل رمزنگاری/رمزگشایی ایجاد کند.
+
+---
+
+#### ADR 6: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** A general-purpose search engine must serve a global audience. This requires supporting multiple languages for both the user interface and the search results themselves, as well as handling different regional formats. The current design does not address a formal strategy for **localization** and **internationalization**.
+* **Decision:** We will design the system with **internationalization (I18n)** as a core principle. This includes:
+    * **Externalized Content:** All user-facing text in the Search Frontend (e.g., UI labels, error messages) will be stored in external files that can be easily translated.
+    * **Locale-Aware Processing:** The Query Processor and Ranker will be designed to handle and understand queries in different languages. This includes using language-specific tokenizers, stemming algorithms, and models for relevance scoring.
+    * **Country-Specific Indexing:** The indexing pipeline will be aware of a page's country or language of origin. Search results will be prioritized based on the user's location and language preference.
+* **Consequences:**
+    * **Positive:** Enables the system to serve a global audience effectively, improves the user experience by providing relevant results in the user's native language, and allows for business expansion into new markets.
+    * **Negative:** Adds some initial architectural and development complexity and requires a dedicated process for managing translations and regional data.
+
+* **Farsi Version - ADR 6: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک موتور جستجوی عمومی باید به مخاطبان جهانی خدمات ارائه دهد. این امر نیازمند پشتیبانی از چندین زبان برای هم رابط کاربری و هم نتایج جستجو است، و همچنین مدیریت فرمت‌های منطقه‌ای مختلف. طراحی فعلی یک استراتژی رسمی برای **محلی‌سازی** و **بین‌المللی‌سازی** را در نظر نگرفته است.
+    * **تصمیم:** ما سیستم را با **بین‌المللی‌سازی (I18n)** به عنوان یک اصل اصلی طراحی خواهیم کرد. این شامل:
+        * **محتوای بیرونی:** تمام متن‌های قابل مشاهده برای کاربر در Search Frontend (مانند برچسب‌های رابط کاربری، پیام‌های خطا) در فایل‌های خارجی ذخیره خواهند شد که به راحتی قابل ترجمه هستند.
+        * **پردازش آگاه به لوکال:** پردازشگر پرس‌وجو و رتبه‌بند به گونه‌ای طراحی خواهند شد که پرس‌وجوها را به زبان‌های مختلف درک و مدیریت کنند. این شامل استفاده از توکن‌سازهای مخصوص زبان، الگوریتم‌های ریشه‌یابی و مدل‌هایی برای امتیازدهی ارتباط است.
+        * **نمایه‌سازی مخصوص کشور:** خط لوله نمایه‌سازی از کشور یا زبان مبدأ یک صفحه آگاه خواهد بود. نتایج جستجو بر اساس موقعیت مکانی و ترجیح زبانی کاربر اولویت‌بندی خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** سیستم را قادر می‌سازد تا به طور مؤثر به مخاطبان جهانی خدمات دهد، با ارائه نتایج مرتبط به زبان مادری کاربر، تجربه کاربری را بهبود می‌بخشد و امکان گسترش کسب‌وکار به بازارهای جدید را فراهم می‌کند.
+        * **منفی:** مقداری پیچیدگی اولیه در معماری و توسعه اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و داده‌های منطقه‌ای است.
+
+---
+
+#### ADR 7: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** A large-scale, high-traffic system like a search engine cannot afford service outages caused by faulty deployments. A "big-bang" release of new code to all servers at once is too risky and can disrupt service for millions of users. A robust strategy for **upgradability** that minimizes risk is essential to enable rapid iteration.
+* **Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major releases.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable features remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of services will first be deployed to a small subset of production servers ("canaries") and closely monitored. If the performance and error rates are stable, the new version will be gradually rolled out to all servers.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage, enables faster and more confident deployments, and supports data-driven decision-making for new features.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 7: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سیستم با مقیاس بزرگ و ترافیک بالا مانند یک موتور جستجو نمی‌تواند قطعی سرویس ناشی از استقرار‌های معیوب را تحمل کند. انتشار "انفجاری" کد جدید بر روی تمام سرورها به صورت همزمان بسیار خطرناک است و می‌تواند سرویس را برای میلیون‌ها کاربر مختل کند. یک استراتژی قوی برای **قابلیت به‌روزرسانی** برای به حداقل رساندن ریسک و امکان تکرار سریع ضروری است.
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد ویژگی‌ها را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک سوئیچ قطع فوری در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها ابتدا به زیرمجموعه کوچکی از سرورهای تولیدی ("قناری‌ها") مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام سرورها منتشر خواهد شد.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به طور چشمگیری کاهش می‌یابد، امکان استقرارهای سریع‌تر و با اطمینان بیشتر را فراهم می‌کند و از تصمیم‌گیری داده‌محور برای ویژگی‌های جدید پشتیبانی می‌کند.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
