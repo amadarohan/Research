@@ -898,13 +898,114 @@ builder.Services.AddSwaggerGen(c =>
 ```
 
 ---
+# Preventing SQL Injection in ASP.NET Core Without ORM
 
-### **Key Takeaways**:  
-1. **`[Authorize]`**: Base attribute for any authenticated user.  
-2. **Roles**: Use `[Authorize(Roles = "Role1,Role2")]` for role checks.  
-3. **Policies**: Define reusable rules in `Program.cs` with `AddPolicy`.  
-4. **Claims**: Check user properties (e.g., `User.FindFirst(ClaimTypes.Email)`).  
-5. **Custom Attributes**: Implement `IAuthorizationFilter` for dynamic logic.  
+When not using an ORM like Entity Framework, you need to be extra careful to prevent SQL injection attacks. Here are the best approaches:
 
-These challenges cover the **entire spectrum** of ASP.NET Core auth, from simple JWT validation to complex resource-based rules. Let me know if you'd like to dive deeper into any scenario!
-These challenges progressively build expertise in ASP.NET Core security, from basic protections to advanced configurations. Mastering them will prepare you for real-world security scenarios and interviews. Let me know if you'd like additional challenges on specific topics!
+## 1. Use Parameterized Queries (Strongly Recommended)
+
+```csharp
+// Good - Parameterized query
+public async Task<User> GetUserById(int userId)
+{
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        await connection.OpenAsync();
+        
+        var query = "SELECT * FROM Users WHERE UserId = @UserId";
+        
+        return await connection.QueryFirstOrDefaultAsync<User>(query, new { UserId = userId });
+    }
+}
+```
+
+## 2. Using ADO.NET with Parameters
+
+```csharp
+// Using SqlCommand with parameters
+public async Task<User> GetUserById(int userId)
+{
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        await connection.OpenAsync();
+        
+        using (var command = new SqlCommand("SELECT * FROM Users WHERE UserId = @UserId", connection))
+        {
+            command.Parameters.AddWithValue("@UserId", userId);
+            
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    return new User
+                    {
+                        UserId = reader.GetInt32(0),
+                        Username = reader.GetString(1)
+                        // ...
+                    };
+                }
+            }
+        }
+    }
+    return null;
+}
+```
+
+## 3. Stored Procedures (Another Safe Option)
+
+```csharp
+public async Task<User> GetUserById(int userId)
+{
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        await connection.OpenAsync();
+        
+        using (var command = new SqlCommand("sp_GetUserById", connection))
+        {
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("@UserId", userId);
+            
+            // Execute and process results...
+        }
+    }
+}
+```
+
+## What NOT to Do (SQL Injection Vulnerabilities)
+
+```csharp
+// BAD - String concatenation (SQL injection risk!)
+public async Task<User> GetUserById(int userId)
+{
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        await connection.OpenAsync();
+        
+        // Vulnerable to SQL injection!
+        var query = $"SELECT * FROM Users WHERE UserId = {userId}";
+        
+        return await connection.QueryFirstOrDefaultAsync<User>(query);
+    }
+}
+```
+
+## Additional Security Measures
+
+1. **Input Validation**: Always validate user input before using it in queries
+   ```csharp
+   if (userId <= 0) throw new ArgumentException("Invalid user ID");
+   ```
+
+2. **Principle of Least Privilege**: Database user should have only necessary permissions
+
+3. **Use Dapper**: While not a full ORM, Dapper makes parameterized queries easier
+   ```csharp
+   // With Dapper
+   var user = await connection.QuerySingleOrDefaultAsync<User>(
+       "SELECT * FROM Users WHERE Username = @username", 
+       new { username = inputUsername });
+   ```
+
+4. **Sanitize Inputs**: For dynamic SQL (when absolutely necessary), sanitize inputs
+
+Remember that parameterized queries are the most reliable defense against SQL injection, as they ensure user input is always treated as data rather than executable code.
