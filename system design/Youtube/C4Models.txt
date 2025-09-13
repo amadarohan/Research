@@ -1,0 +1,160 @@
+### YouTube System Design - C4 Model Diagrams
+
+Based on the architectural decisions for a platform like YouTube, here are the C4 model diagrams.
+
+-----
+
+### 1\. System Context Diagram
+
+The System Context diagram provides a high-level view of the YouTube system and its interactions with external users and systems. It shows the core platform interacting with creators, viewers, and external services for payments, social sharing, and content moderation.
+
+**Description:**
+
+  * **Creator**: A person who uploads, manages, and monetizes video content.
+  * **Viewer**: A person who watches videos, comments, and subscribes to channels.
+  * **YouTube System (System in Scope)**: The central platform that facilitates all video hosting, streaming, social interaction, and content discovery.
+  * **Third-Party Payment Gateway**: An external service that securely processes payments for channel subscriptions and memberships.
+  * **External Social Services**: Third-party platforms (e.g., Facebook, Twitter) that are used for social logins and for sharing video links.
+  * **External Content Moderation**: A third-party or internal system that provides content moderation capabilities (e.g., copyright checks, inappropriate content detection).
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Context
+    title System Context Diagram for YouTube
+
+    Person(creator, "Creator", "Uploads, manages, and monetizes video content.")
+    Person(viewer, "Viewer", "Watches videos, comments, and subscribes.")
+
+    System(youtube, "YouTube", "The core system for video hosting and streaming.")
+
+    System_Ext(payment_gateway, "Third-Party Payment Gateway", "Processes payments for subscriptions and memberships.")
+    System_Ext(social_services, "External Social Services", "Provides social logins and sharing functionality.")
+    System_Ext(moderation_service, "External Content Moderation", "Detects and flags inappropriate or copyrighted content.")
+
+    Rel(creator, youtube, "Uploads and manages videos on")
+    Rel(viewer, youtube, "Watches videos and interacts on")
+    Rel(youtube, payment_gateway, "Processes payments via")
+    Rel(youtube, social_services, "Integrates with for login and sharing")
+    Rel(youtube, moderation_service, "Sends content for moderation to")
+```
+
+-----
+
+### 2\. Container Diagram
+
+This diagram zooms into the YouTube system, showing the major independently deployable components. The design is based on a distributed, event-driven architecture with specialized services for media ingestion, processing, delivery, and a separate microservice ecosystem for user interactions.
+
+**Description:**
+
+  * **Client Application (Mobile/Web)**: The user-facing application used by creators to upload and by viewers to watch streams.
+  * **API Gateway**: The single entry point for all client requests, handling authentication, and routing to backend services.
+  * **Upload Service**: A high-throughput, geographically distributed service that accepts raw video uploads from creators.
+  * **Transcoding Service**: A powerful, distributed service that transcodes incoming video streams into multiple resolutions and bitrates to support various viewer devices and network conditions.
+  * **Content Delivery Network (CDN)**: A global network of edge servers that cache and deliver video fragments to viewers with minimal latency.
+  * **Video Store**: A highly scalable object storage system for storing raw and transcoded video files.
+  * **Message Broker**: A distributed message queue (e.g., Kafka) that decouples services and handles the high-volume event stream of video processing events.
+  * **Metadata Service**: Manages the metadata for videos, such as title, description, tags, and creator information.
+  * **Social Service**: Manages user-to-user interactions like subscriptions, comments, and likes.
+  * **Search and Recommendation Service**: A sophisticated service that handles all video search queries and provides personalized video recommendations.
+  * **User Service**: Manages user profiles, authentication, and account data.
+  * **Analytics Service**: Ingests and processes video and user interaction data to provide insights and business intelligence.
+  * **Database**: A data store (or multiple polyglot stores) for user profiles, video metadata, and social data.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Container
+    title Container Diagram for YouTube
+
+    Person(creator, "Creator")
+    Person(viewer, "Viewer")
+    System_Ext(social_services, "External Social Services")
+
+    System_Boundary(youtube_boundary, "YouTube System") {
+        Container(client, "Client Application", "Desktop, Mobile, Web App", "The user-facing application for streaming and viewing.")
+        Container(api_gateway, "API Gateway", "Go/NGINX", "Routes API calls and handles auth.")
+
+        Container(upload_service, "Upload Service", "C++", "Accepts raw video uploads.")
+        Container(transcoding_service, "Transcoding Service", "Custom/FFmpeg", "Converts streams to multiple resolutions/bitrates.")
+        Container(metadata_service, "Metadata Service", "Java", "Manages video titles, descriptions, etc.")
+        Container(social_service, "Social Service", "Scala", "Manages subscriptions, comments, and likes.")
+        Container(search_rec_service, "Search & Recommendation Service", "Python", "Handles video discovery and personalization.")
+        Container(user_service, "User Service", "Java", "Manages user profiles and accounts.")
+        Container(analytics_service, "Analytics Service", "Apache Spark", "Processes user and video interaction data.")
+
+        Container_Ext(cdn, "CDN Service", "Global Network", "Delivers video content to viewers.")
+        ContainerDb(video_store, "Video Store", "Google Cloud Storage/S3", "Stores raw and transcoded video files.")
+        ContainerDb(database, "Database", "Cassandra/MySQL", "Stores user, video, and social metadata.")
+        Container(message_broker, "Message Broker", "Kafka", "Decouples services and handles event streams.")
+    }
+
+    Rel(creator, client, "Uses to upload")
+    Rel(viewer, client, "Uses to watch")
+    Rel(client, api_gateway, "Makes API calls to", "HTTPS")
+
+    Rel(client, upload_service, "Uploads raw video stream to", "HTTP/2")
+    Rel(upload_service, message_broker, "Publishes 'Video Uploaded' event to")
+    Rel(message_broker, transcoding_service, "Sends raw video for transcoding to")
+    Rel(transcoding_service, video_store, "Saves transcoded files to")
+    Rel(transcoding_service, metadata_service, "Updates video status with")
+
+    Rel(metadata_service, database, "Reads/writes video metadata from")
+    Rel(social_service, database, "Reads/writes social data from")
+    Rel(search_rec_service, database, "Queries metadata for search/rec from")
+    Rel(search_rec_service, analytics_service, "Consumes data from for ML models")
+    Rel(user_service, database, "Reads/writes user profiles from")
+    Rel(client, cdn, "Fetches video content from", "HTTP")
+```
+
+-----
+
+### 3\. Component Diagram (Search & Recommendation Service)
+
+This diagram focuses on the internal components of the Search & Recommendation Service container, illustrating how it handles a user's search query and provides recommendations.
+
+**Description:**
+
+  * **API Controller**: The entry point for the service. It receives search requests or requests for recommendations from the API Gateway.
+  * **Query Parser**: A component that takes the user's raw query and breaks it down into a structured representation (e.g., tokens, keywords, filters).
+  * **Search Index Client**: A component that queries a highly optimized, distributed search index to find relevant video IDs based on the parsed query.
+  * **Ranking Model**: The core machine learning model that scores candidate videos based on numerous factors like watch time, user history, freshness, and creator reputation.
+  * **Recommendation Generator**: A component that uses user history, subscriptions, and other signals to generate a list of personalized videos to recommend. It may operate independently of the search path.
+  * **Results Aggregator**: A component that combines and de-duplicates the results from the Search Index and the Recommendation Generator.
+  * **Video Metadata Client**: A component that fetches rich metadata (e.g., title, thumbnail URL, channel name) for the final list of video IDs from the Metadata Service.
+  * **Cache**: A fast, in-memory cache that stores results for popular search queries or recommendations for frequently active users to reduce latency.
+
+**Mermaid.js Code:**
+
+```mermaid
+C4Component
+    title Component Diagram for Search & Recommendation Service
+
+    Container(api_gateway, "API Gateway")
+    Container_Ext(database, "Database", "Cassandra/MySQL")
+    Container_Ext(metadata_service, "Metadata Service")
+
+    Container_Boundary(search_rec_service, "Search & Recommendation Service") {
+        Component(api_controller, "API Controller", "REST Endpoint", "Receives search and recommendation requests.")
+        Component(query_parser, "Query Parser", "NLP/Lexer", "Analyzes and processes the query string.")
+        Component(search_index_client, "Search Index Client", "Elasticsearch Client", "Queries the video search index.")
+        Component(ranking_model, "Ranking Model", "TensorFlow/ML", "Scores and ranks candidate videos.")
+        Component(rec_generator, "Recommendation Generator", "ML Logic", "Generates a list of personalized videos.")
+        Component(results_aggregator, "Results Aggregator", "Logic Component", "Combines results from multiple sources.")
+        Component(metadata_client, "Video Metadata Client", "gRPC Client", "Fetches video metadata.")
+        Component(cache, "Cache", "Redis", "Caches popular search and recommendation results.")
+    }
+
+    Rel(api_gateway, api_controller, "Sends requests to", "HTTPS")
+    Rel(api_controller, cache, "Checks for cached results in")
+    Rel(cache, api_controller, "Returns cached results if available")
+    Rel(api_controller, query_parser, "Passes query to")
+    Rel(query_parser, search_index_client, "Queries for video IDs from")
+    Rel(api_controller, rec_generator, "Requests recommendations from")
+    Rel(search_index_client, ranking_model, "Passes video IDs for ranking to")
+    Rel(rec_generator, ranking_model, "Passes video IDs for ranking to")
+    Rel(ranking_model, results_aggregator, "Returns ranked video IDs to")
+    Rel(results_aggregator, metadata_client, "Requests metadata for video IDs from")
+    Rel(metadata_client, metadata_service, "Retrieves metadata from")
+    Rel(metadata_client, api_controller, "Returns final results to")
+```
