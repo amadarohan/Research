@@ -1,0 +1,166 @@
+The provided Online Shop system design document outlines four Architecture Decision Records (ADRs) that address key non-functional requirements. The existing ADRs focus on **scalability**, **resilience**, and **maintainability**. For example, ADR 1 advocates for a microservices architecture to support independent scaling and development. ADR 2 proposes the Saga pattern to manage distributed transactions, ensuring consistency across services without tight coupling. ADR 3 recommends a dedicated distributed search engine for a fast and flexible product catalog. Finally, ADR 4 suggests using a message broker for asynchronous communication to enhance loose coupling and resilience.
+
+However, a complete system design for a global online shop needs to explicitly address other crucial non-functional requirements not covered in the existing ADRs. The current document lacks a formal strategy for **privacy**, **localization**, and **upgradability**. A robust and comprehensive system should be designed to protect sensitive data, adapt to different languages and regions, and allow for safe and continuous feature releases.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Microservices Architecture for a Scalable Online Shop
+
+* **Status:** Proposed
+* **Context:** The goal is to build a scalable and resilient online shop that can handle a growing number of customers and products, especially during peak sales periods. [cite_start]A monolithic architecture would become a bottleneck for scalability and development velocity[cite: 301, 302].
+* **Decision:** We will adopt a microservices architectural pattern. [cite_start]The system will be decomposed into a set of loosely coupled, independently deployable services, each owning a specific business capability[cite: 304].
+* **Consequences:**
+    * [cite_start]**Positive:** Individual services can be scaled independently, a failure in one service will not bring down the entire system, and development teams can work concurrently, leading to faster feature delivery[cite: 306, 308].
+    * [cite_start]**Negative:** The overall system is more complex to design and operate, requires a mature DevOps culture, and maintaining data consistency across multiple databases is challenging[cite: 311, 312, 313].
+
+* **Farsi Version - ADR 1: استفاده از معماری میکروسرویس‌ها برای یک فروشگاه آنلاین مقیاس‌پذیر**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** هدف، ساخت یک فروشگاه آنلاین مقیاس‌پذیر و مقاوم است که بتواند تعداد رو به رشد مشتریان و محصولات را، به ویژه در دوره‌های اوج فروش مانند جمعه سیاه، مدیریت کند. [cite_start]یک معماری یکپارچه (Monolithic)، اگرچه برای شروع ساده‌تر است، اما در نهایت به یک گلوگاه برای مقیاس‌پذیری و سرعت توسعه تبدیل خواهد شد[cite: 301, 302, 303].
+    * **تصمیم:** ما الگوی معماری میکروسرویس‌ها را اتخاذ خواهیم کرد. [cite_start]سیستم به مجموعه‌ای از سرویس‌های با وابستگی کم و قابل استقرار مستقل تقسیم خواهد شد که هر یک مسئول یک قابلیت تجاری خاص هستند[cite: 304].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** سرویس‌های مجزا می‌توانند به صورت مستقل مقیاس‌پذیر شوند، خرابی در یک سرویس کل سیستم را از کار نمی‌اندازد و تیم‌های توسعه می‌توانند به صورت همزمان کار کنند که منجر به ارائه سریع‌تر ویژگی‌ها می‌شود[cite: 306, 308].
+        * [cite_start]**منفی:** طراحی، توسعه، استقرار و عملیات کلی سیستم پیچیده‌تر است، نیاز به فرهنگ و ابزارهای DevOps بالغ دارد و حفظ سازگاری داده‌ها در چندین پایگاه داده چالش‌برانگیز است[cite: 311, 312, 313].
+
+---
+
+#### ADR 2: Distributed Transaction Management Using the Saga Pattern
+
+* **Status:** Proposed
+* **Context:** In a microservices architecture, critical business processes like placing an order often span multiple services. [cite_start]Maintaining transactional integrity across these services without tight coupling is a significant challenge[cite: 323, 324].
+* **Decision:** We will use an orchestration-based **Saga pattern** to manage distributed transactions. The Order Service will act as the orchestrator, sending commands to other services via a Message Broker. [cite_start]Each service will execute its local transaction and publish events, with the orchestrator handling subsequent steps or compensating transactions in case of failure[cite: 326, 328].
+* **Consequences:**
+    * [cite_start]**Positive:** Services remain independent and resilient, and the pattern supports fault tolerance through compensating transactions[cite: 330].
+    * [cite_start]**Negative:** The Saga pattern is significantly more complex to design and debug than traditional transactions, and the system achieves eventual consistency rather than immediate strong consistency[cite: 334].
+
+* **Farsi Version - ADR 2: مدیریت تراکنش توزیع‌شده با استفاده از الگوی ساگا**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** در معماری میکروسرویس‌ها، فرآیندهای تجاری حیاتی مانند ثبت سفارش اغلب چندین سرویس را درگیر می‌کنند. [cite_start]حفظ یکپارچگی تراکنشی در این سرویس‌ها بدون وابستگی شدید یک چالش بزرگ است[cite: 323, 324].
+    * **تصمیم:** ما الگوی **ساگا** را برای مدیریت تراکنش‌های توزیع‌شده در گردش‌های کاری پیچیده مانند ثبت سفارش پیاده‌سازی خواهیم کرد. [cite_start]سرویس سفارش به عنوان هماهنگ‌کننده (orchestrator) عمل خواهد کرد و با ارسال دستورات به سرویس‌های دیگر از طریق یک واسط پیام، تراکنش را آغاز می‌کند[cite: 326].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** سرویس‌ها مستقل و مقاوم باقی می‌مانند، و این الگو به طور ذاتی از تحمل خطا از طریق تراکنش‌های جبرانی پشتیبانی می‌کند[cite: 330].
+        * [cite_start]**منفی:** طراحی و اشکال‌زدایی الگوی ساگا به طور قابل توجهی پیچیده‌تر از تراکنش‌های سنتی است، و سیستم به جای سازگاری قوی و فوری، به سازگاری نهایی دست می‌یابد[cite: 334].
+
+---
+
+#### ADR 3: Product Catalog Storage and Search with a Distributed Search Engine
+
+* **Status:** Proposed
+* **Context:** The Product Catalog needs efficient storage and fast, flexible search capabilities across millions of products. [cite_start]Traditional relational databases struggle with the performance and flexibility required for complex, real-time search queries at scale[cite: 341].
+* [cite_start]**Decision:** We will use a distributed search engine like **Elasticsearch** as the primary data store for the Product Catalog Service to handle fast read-heavy operations[cite: 343, 345]. [cite_start]A separate relational database will store master product data that requires strong consistency, with the search engine kept eventually consistent with this master data store[cite: 345, 352].
+* **Consequences:**
+    * [cite_start]**Positive:** Provides extremely fast search performance, horizontal scalability, a flexible schema, and a rich query language[cite: 347, 348].
+    * [cite_start]**Negative:** Adds operational complexity, introduces eventual consistency, is resource-intensive, and requires a robust synchronization mechanism to keep data fresh[cite: 351, 352].
+
+* **Farsi Version - ADR 3: ذخیره‌سازی و جستجوی کاتالوگ محصول با یک موتور جستجوی توزیع‌شده**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** کاتالوگ محصول نیازمند ذخیره‌سازی کارآمد و قابلیت‌های جستجوی سریع و منعطف در میان میلیون‌ها محصول است. [cite_start]پایگاه‌های داده رابطه‌ای سنتی با عملکرد و انعطاف‌پذیری مورد نیاز برای جستجوهای پیچیده و در زمان واقعی در مقیاس بزرگ، مشکل دارند[cite: 341].
+    * [cite_start]**تصمیم:** ما از یک موتور جستجوی توزیع‌شده (مانند Elasticsearch) به عنوان ذخیره‌ساز اصلی برای سرویس کاتالوگ محصول استفاده خواهیم کرد تا عملیات‌های سنگین خواندن را با سرعت بالا مدیریت کند[cite: 343, 345]. [cite_start]یک پایگاه داده رابطه‌ای جداگانه، داده‌های اصلی محصول را که نیازمند سازگاری قوی هستند، ذخیره خواهد کرد، در حالی که موتور جستجو با این پایگاه داده اصلی به صورت سازگاری نهایی نگه داشته می‌شود[cite: 345].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** جستجوی فوق‌العاده سریع، مقیاس‌پذیری افقی، طرح‌واره منعطف و زبان پرس‌وجوی غنی را فراهم می‌کند[cite: 347, 348].
+        * [cite_start]**منفی:** پیچیدگی عملیاتی را افزایش می‌دهد، سازگاری نهایی را معرفی می‌کند، از نظر منابع پرهزینه است و نیاز به مکانیسم هماهنگ‌سازی قوی برای تازه نگه داشتن داده‌ها دارد[cite: 351, 352].
+
+---
+
+#### ADR 4: Asynchronous Communication with a Message Broker
+
+* **Status:** Proposed
+* [cite_start]**Context:** In a microservices architecture, direct synchronous calls between services can cause tight coupling, increase latency, and lead to cascading failures if a service is unavailable[cite: 359, 360].
+* [cite_start]**Decision:** We will use a **Message Broker** (e.g., Apache Kafka or RabbitMQ) for asynchronous, event-driven communication between services[cite: 362]. Services will publish events, and interested services will subscribe to them. [cite_start]Synchronous communication will be reserved for scenarios where an immediate response is required[cite: 364].
+* **Consequences:**
+    * [cite_start]**Positive:** Services are loosely coupled, the system is more resilient to failures, and producers/consumers can scale independently[cite: 366, 367].
+    * [cite_start]**Negative:** Leads to eventual consistency, adds a critical component to manage, and can make debugging distributed event chains challenging[cite: 371].
+
+* **Farsi Version - ADR 4: ارتباط ناهمگام با یک واسط پیام**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** در معماری میکروسرویس‌ها، فراخوانی‌های همگام و مستقیم HTTP/RPC می‌تواند وابستگی شدید ایجاد کند، تأخیر را افزایش دهد و منجر به شکست‌های زنجیره‌ای در صورت عدم دسترسی یک سرویس شود[cite: 359, 360].
+    * [cite_start]**تصمیم:** ما در درجه اول از یک **واسط پیام** (مانند Apache Kafka یا RabbitMQ) برای ارتباط ناهمگام و رویداد-محور بین سرویس‌ها استفاده خواهیم کرد[cite: 362]. [cite_start]سرویس‌ها رویدادها را به موضوعات/صف‌های خاص منتشر می‌کنند و سرویس‌های دیگر به موضوعات مربوطه مشترک می‌شوند تا به آن‌ها واکنش نشان دهند[cite: 363].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** وابستگی سرویس‌ها کاهش می‌یابد، مقاومت سیستم در برابر خرابی‌ها افزایش می‌یابد و تولیدکنندگان/مصرف‌کنندگان می‌توانند به صورت مستقل مقیاس‌پذیر شوند[cite: 366, 367].
+        * [cite_start]**منفی:** منجر به سازگاری نهایی می‌شود، یک جزء حیاتی دیگر برای مدیریت اضافه می‌کند و اشکال‌زدایی زنجیره‌های رویداد توزیع‌شده می‌تواند چالش‌برانگیز باشد[cite: 371].
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more robust and comprehensive design for an online shop, the following ADRs are proposed to cover **privacy**, **localization**, and **upgradability**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** An online shop handles vast amounts of sensitive user data, including personal information, payment details, and order history. Protecting this data is a legal and ethical requirement, and is essential for building and maintaining user trust. The current design mentions services handling data but lacks a formal architectural decision on how to secure it.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach. This involves integrating privacy and security controls into every stage of the system development lifecycle. Key practices will include:
+    * **Data Encryption:** Encrypt all sensitive data both in transit (using HTTPS/TLS) and at rest (in our databases and object stores).
+    * **Access Control:** Implement the principle of least privilege, ensuring that services and employees only have access to the data they absolutely need.
+    * **Data Minimization:** Only collect and store data that is absolutely necessary for the functioning of the business.
+    * **Auditing:** Log and monitor all access to sensitive data to detect and respond to suspicious activity.
+* **Consequences:**
+    * **Positive:** Ensures legal and regulatory compliance, builds user trust, and significantly reduces the risk of data breaches.
+    * **Negative:** Adds engineering and operational complexity and may introduce a small amount of latency due to encryption/decryption.
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک فروشگاه آنلاین حجم زیادی از داده‌های حساس کاربران، از جمله اطلاعات شخصی، جزئیات پرداخت و سابقه سفارش را مدیریت می‌کند. حفاظت از این داده‌ها یک الزام قانونی و اخلاقی است و برای ایجاد و حفظ اعتماد کاربر ضروری است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد اما فاقد تصمیم معماری رسمی در مورد نحوه ایمن‌سازی آن است.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را اتخاذ خواهیم کرد. این شامل یکپارچه‌سازی کنترل‌های حریم خصوصی و امنیتی در هر مرحله از چرخه عمر توسعه سیستم است. اقدامات کلیدی شامل:
+        * **رمزنگاری داده‌ها:** تمام داده‌های حساس در حال انتقال (با استفاده از HTTPS/TLS) و در حال سکون (در پایگاه‌های داده و فضاهای ذخیره‌سازی) رمزنگاری خواهند شد.
+        * **کنترل دسترسی:** اصل حداقل دسترسی پیاده‌سازی خواهد شد، که اطمینان می‌دهد سرویس‌ها و کارمندان تنها به داده‌هایی که مطلقاً نیاز دارند دسترسی داشته باشند.
+        * **به حداقل رساندن داده‌ها:** تنها داده‌هایی که برای عملکرد کسب‌وکار کاملاً ضروری هستند، جمع‌آوری و ذخیره می‌شوند.
+        * **حسابرسی:** تمام دسترسی‌ها به داده‌های حساس ثبت و نظارت خواهند شد تا فعالیت‌های مشکوک را شناسایی و به آن‌ها پاسخ داده شود.
+    * **پیامدها:**
+        * **مثبت:** انطباق قانونی و مقرراتی را تضمین می‌کند، اعتماد کاربر را می‌سازد و ریسک نقض داده‌ها را به شدت کاهش می‌دهد.
+        * **منفی:** پیچیدگی مهندسی و عملیاتی را اضافه می‌کند و ممکن است مقداری تأخیر به دلیل رمزنگاری/رمزگشایی ایجاد کند.
+
+---
+
+#### ADR 6: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** To expand into new markets and provide a compelling user experience, the online shop must support different languages, currencies, and regional formats for dates, numbers, and addresses. Hard-coding content or not having a clear strategy for this would severely limit business growth.
+* **Decision:** We will design the application with **internationalization (I18n)** as a core principle. This includes:
+    * **Externalized Content:** All user-facing text, including product names, descriptions, and UI labels, will be stored in external resource files and databases that support multiple languages.
+    * **Client-driven Locale:** The client application will automatically detect the user's preferred language and region and pass this information to the backend in all API requests.
+    * **Centralized Formatting:** A dedicated service will handle all locale-specific formatting for numbers, currencies, and dates.
+* **Consequences:**
+    * **Positive:** The platform can be easily and quickly adapted for new markets, which is crucial for business expansion. A localized experience significantly improves user engagement and satisfaction.
+    * **Negative:** Adds some initial architectural and development complexity and requires a dedicated process for managing translations and regional content.
+
+* **Farsi Version - ADR 6: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** برای گسترش به بازارهای جدید و ارائه یک تجربه کاربری جذاب، فروشگاه آنلاین باید از زبان‌ها، ارزها و فرمت‌های منطقه‌ای مختلف برای تاریخ، اعداد و آدرس‌ها پشتیبانی کند. کدنویسی سخت‌افزاری محتوا یا نداشتن یک استراتژی واضح برای این موضوع، رشد کسب‌وکار را به شدت محدود می‌کند.
+    * **تصمیم:** ما برنامه را با **بین‌المللی‌سازی (I18n)** به عنوان یک اصل اصلی طراحی خواهیم کرد. این شامل:
+        * **محتوای بیرونی:** تمام متن‌های قابل مشاهده برای کاربر، از جمله نام محصولات، توضیحات و برچسب‌های رابط کاربری، در فایل‌های منابع خارجی و پایگاه‌های داده‌ای که از چندین زبان پشتیبانی می‌کنند، ذخیره خواهند شد.
+        * **لوکال کاربر محور:** برنامه مشتری به طور خودکار زبان و منطقه ترجیحی کاربر را تشخیص داده و این اطلاعات را در تمام درخواست‌های API به بک‌اند ارسال می‌کند.
+        * **فرمت‌بندی مرکزی:** یک سرویس اختصاصی تمام فرمت‌بندی‌های مخصوص لوکال برای اعداد، ارزها و تاریخ‌ها را مدیریت خواهد کرد.
+    * **پیامدها:**
+        * **مثبت:** پلتفرم می‌تواند به آسانی و به سرعت برای بازارهای جدید تطبیق یابد، که برای گسترش کسب‌وکار حیاتی است. یک تجربه محلی‌سازی شده تعامل و رضایت کاربر را به شدت افزایش می‌دهد.
+        * **منفی:** مقداری پیچیدگی اولیه در معماری و توسعه اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و محتوای منطقه‌ای است.
+
+---
+
+#### ADR 7: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** As a high-traffic e-commerce platform, the system requires continuous delivery of new features without causing service disruptions. A "big-bang" deployment of new code to all servers at once is too risky and can lead to a major outage. A robust strategy for **upgradability** is essential to minimize risk and enable rapid iteration.
+* **Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major releases.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable features remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of services will first be deployed to a small subset of production servers ("canaries") and closely monitored. If the performance and error rates are stable, the new version will be gradually rolled out to all servers.
+    * **A/B Testing:** This approach also supports A/B testing, allowing us to measure the impact of new features on key business metrics before a full release.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage, enables faster and more confident deployments, and supports data-driven decision-making for new features.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 7: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** به عنوان یک پلتفرم تجارت الکترونیک با ترافیک بالا، سیستم نیازمند تحویل مداوم ویژگی‌های جدید بدون ایجاد اختلال در سرویس است. استقرار "انفجاری" کد جدید بر روی تمام سرورها به صورت همزمان بسیار خطرناک است و می‌تواند منجر به یک قطعی بزرگ شود. یک استراتژی قوی برای **قابلیت به‌روزرسانی** برای به حداقل رساندن ریسک و امکان تکرار سریع ضروری است.
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد ویژگی‌ها را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک سوئیچ قطع فوری در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها ابتدا به زیرمجموعه کوچکی از سرورهای تولیدی ("قناری‌ها") مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام سرورها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین از تست A/B پشتیبانی می‌کند و به ما امکان می‌دهد تأثیر ویژگی‌های جدید را بر معیارهای کلیدی کسب‌وکار قبل از انتشار کامل اندازه‌گیری کنیم.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به طور چشمگیری کاهش می‌یابد، امکان استقرارهای سریع‌تر و با اطمینان بیشتر را فراهم می‌کند و از تصمیم‌گیری داده‌محور برای ویژگی‌های جدید پشتیبانی می‌کند.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
