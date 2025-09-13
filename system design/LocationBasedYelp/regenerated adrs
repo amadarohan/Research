@@ -1,0 +1,168 @@
+The provided Yelp system design document presents four Architecture Decision Records (ADRs) that address critical non-functional requirements. The existing ADRs focus on **performance**, **scalability**, **maintainability**, and **recoverability** (implicitly). For instance, ADR 1 details a dual-indexing strategy for text and geospatial search to ensure fast queries. ADR 2 outlines a robust user-generated content (UGC) pipeline for scalability and quality control. ADR 3 decides to use third-party APIs for geocoding to improve accuracy and reduce development effort. Finally, ADR 4 proposes a multi-layered caching strategy to handle the read-heavy nature of the service.
+
+However, a complete system design for a global platform like Yelp needs to explicitly address other crucial non-functional requirements that are not covered in the current document. The existing ADRs do not include formal decisions regarding **localization**, **upgradability**, or **privacy**. A robust and comprehensive system must be designed to adapt to new regions, safely deploy new features, and protect sensitive user data.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Dual-Indexing Strategy for Text and Geospatial Search
+
+* **Status:** Proposed
+* **Context:** A location-based service requires efficient handling of both text-based and geospatial search queries. A single index is not optimized for both of these demanding workloads.
+* **Decision:** We will use a dual-indexing strategy with two separate, purpose-built indices: a **Geospatial Index** for location-based queries and a **Full-Text Search Index** for text-based queries on business names and reviews. When a user searches, the query will run against both indices in parallel.
+* **Consequences:**
+    * **Positive:** Provides extremely fast query performance, allows independent scaling of each index, and offers greater flexibility for advanced search features.
+    * **Negative:** Increases architectural complexity, introduces data redundancy, and adds operational overhead for managing two separate data stores.
+
+* **Farsi Version - ADR 1: استفاده از استراتژی دوگانه نمایه‌سازی برای جستجوی متنی و مکانی-فضایی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سرویس مبتنی بر مکان نیازمند مدیریت کارآمد هم جستجوهای متنی و هم جستجوهای مکانی-فضایی است. یک نمایه‌ساز واحد برای هر دو نوع این پرس‌وجوهای پرتقاضا بهینه نیست.
+    * **تصمیم:** ما از استراتژی دوگانه نمایه‌سازی با استفاده از دو نمایه‌ساز مجزا و بسیار بهینه‌شده استفاده خواهیم کرد: یک **نمایه‌ساز مکانی-فضایی** برای پرس‌وجوهای مبتنی بر مکان و یک **نمایه‌ساز جستجوی متنی کامل** برای پرس‌وجوهای متنی بر روی نام کسب‌وکارها و نظرات. هنگامی که کاربر جستجو می‌کند، پرس‌وجو به صورت موازی در هر دو نمایه‌ساز اجرا خواهد شد.
+    * **پیامدها:**
+        * **مثبت:** عملکرد پرس‌وجو را به شدت افزایش می‌دهد، امکان مقیاس‌گذاری مستقل هر نمایه‌ساز را فراهم می‌کند و انعطاف‌پذیری بیشتری برای ویژگی‌های جستجوی پیشرفته ارائه می‌دهد.
+        * **منفی:** پیچیدگی معماری را افزایش می‌دهد، افزونگی داده‌ها را معرفی می‌کند و سربار عملیاتی برای مدیریت دو پایگاه داده مجزا را به همراه دارد.
+
+---
+
+#### ADR 2: User-Generated Content (UGC) Ingestion, Storage, and Moderation
+
+* **Status:** Proposed
+* **Context:** A core feature is user-generated content (UGC), primarily reviews and photos, which needs a robust pipeline for ingestion, scalable storage, and moderation to prevent abuse and ensure quality.
+* **Decision:** We will implement a robust UGC pipeline with asynchronous processing. When content is submitted, it will undergo basic validation and be pushed to a message queue. Dedicated workers will process reviews (storing text in a transactional database) and photos (storing them in a cloud object store). A separate asynchronous moderation service will use automated and human processes to review content before it is displayed.
+* **Consequences:**
+    * **Positive:** Enables the system to handle massive volumes of UGC, provides resilience against failures, and ensures content quality.
+    * **Negative:** Adds significant architectural complexity, introduces eventual consistency, and incurs costs for running automated and human moderation.
+
+* **Farsi Version - ADR 2: دریافت، ذخیره‌سازی و مدیریت محتوای تولیدی توسط کاربر (UGC)**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک ویژگی اصلی، محتوای تولیدی توسط کاربر (UGC)، عمدتاً نظرات و عکس‌ها است، که نیازمند یک خط لوله قوی برای دریافت، ذخیره‌سازی مقیاس‌پذیر و مدیریت برای جلوگیری از سوءاستفاده و تضمین کیفیت است.
+    * **تصمیم:** ما یک خط لوله قوی UGC با پردازش ناهمگام پیاده‌سازی خواهیم کرد. هنگامی که محتوا ارسال می‌شود، اعتبارسنجی اولیه انجام شده و به یک صف پیام ارسال می‌شود. پردازشگران اختصاصی نظرات را (با ذخیره متن در یک پایگاه داده تراکنشی) و عکس‌ها را (با ذخیره در یک فضای ذخیره‌سازی ابری) پردازش خواهند کرد. یک سرویس مدیریت ناهمگام جداگانه از ابزارهای خودکار و فرآیندهای انسانی برای بررسی محتوا قبل از نمایش آن استفاده خواهد کرد.
+    * **پیامدها:**
+        * **مثبت:** سیستم را قادر می‌سازد تا حجم عظیمی از UGC را مدیریت کند، انعطاف‌پذیری در برابر خرابی‌ها را فراهم می‌آورد و کیفیت محتوا را تضمین می‌کند.
+        * **منفی:** پیچیدگی معماری قابل توجهی را اضافه می‌کند، سازگاری نهایی را معرفی می‌کند و هزینه‌هایی برای اجرای مدیریت خودکار و انسانی به همراه دارد.
+
+---
+
+#### ADR 3: Real-time Geocoding and Reverse Geocoding Integration
+
+* **Status:** Proposed
+* **Context:** A location-based service requires accurate, real-time geocoding (address to coordinates) and reverse geocoding (coordinates to address). Building these engines in-house is immensely complex and difficult to scale.
+* **Decision:** We will integrate with third-party Map Service APIs (e.g., Google Maps Geocoding API) for both geocoding and reverse geocoding. The Business Service will use these APIs to geocode addresses, and the Search Service will use them for reverse geocoding when needed. Results will be cached to reduce costs and latency.
+* **Consequences:**
+    * **Positive:** Ensures high accuracy and reliability, reduces development effort, and provides global coverage.
+    * **Negative:** Introduces API costs, creates vendor lock-in, and requires careful management of rate limits.
+
+* **Farsi Version - ADR 3: یکپارچه‌سازی Geocoding و Reverse Geocoding در زمان واقعی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سرویس مبتنی بر مکان نیازمند Geocoding (تبدیل آدرس به مختصات) و Reverse Geocoding (تبدیل مختصات به آدرس) دقیق و در زمان واقعی است. ساخت این موتورها در داخل شرکت بسیار پیچیده و مقیاس‌ناپذیر است.
+    * **تصمیم:** ما با APIهای سرویس نقشه شخص ثالث (مانند Google Maps Geocoding API) برای هر دو Geocoding و Reverse Geocoding یکپارچه خواهیم شد. سرویس کسب‌وکار از این APIها برای Geocoding آدرس‌ها استفاده خواهد کرد و سرویس جستجو از آن‌ها برای Reverse Geocoding در صورت نیاز بهره خواهد برد. نتایج برای کاهش هزینه‌ها و تأخیر کش خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** دقت و قابلیت اطمینان بالا را تضمین می‌کند، تلاش توسعه را کاهش می‌دهد و پوشش جهانی را فراهم می‌سازد.
+        * **منفی:** هزینه‌های API را به همراه دارد، وابستگی به یک ارائه‌دهنده خاص ایجاد می‌کند و نیازمند مدیریت دقیق محدودیت‌های نرخ است.
+
+---
+
+#### ADR 4: Caching Strategy for High-Read Data
+
+* **Status:** Proposed
+* **Context:** The service is inherently read-heavy, and repeatedly fetching data from primary databases would lead to high latency and increased database load. An effective caching strategy is essential for performance and scalability.
+* **Decision:** We will implement a multi-layered caching strategy using an API Gateway cache for static content, a distributed in-memory cache (e.g., Redis) for popular business profiles and search results, and client-side caching. We will use a cache-aside pattern with asynchronous invalidation to keep data fresh.
+* **Consequences:**
+    * **Positive:** Dramatically improves performance, significantly reduces database load, and increases overall system throughput.
+    * **Negative:** Adds complexity to manage cache invalidation, introduces eventual consistency, and adds operational overhead.
+
+* **Farsi Version - ADR 4: استراتژی کشینگ برای داده‌های با حجم خواندن بالا**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** این سرویس به طور ذاتی پر از خواندن است و بازیابی مکرر داده‌ها از پایگاه‌های داده اصلی منجر به تأخیر بالا و افزایش بار پایگاه داده می‌شود. یک استراتژی کشینگ مؤثر برای بهبود عملکرد و مقیاس‌پذیری ضروری است.
+    * **تصمیم:** ما یک استراتژی کشینگ چندلایه را با استفاده از کش API Gateway برای محتوای ایستا، یک کش توزیع‌شده در حافظه (مانند Redis) برای پروفایل‌های کسب‌وکار محبوب و نتایج جستجو، و کشینگ سمت کاربر پیاده‌سازی خواهیم کرد. از الگوی cache-aside با اعتبارزدایی ناهمگام برای حفظ تازگی داده‌ها استفاده خواهیم کرد.
+    * **پیامدها:**
+        * **مثبت:** عملکرد را به طور چشمگیری بهبود می‌بخشد، بار پایگاه داده را به شدت کاهش می‌دهد و توان عملیاتی کلی سیستم را افزایش می‌دهد.
+        * **منفی:** پیچیدگی مدیریت اعتبارزدایی کش را اضافه می‌کند، سازگاری نهایی را معرفی می‌کند و سربار عملیاتی به همراه دارد.
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more robust and comprehensive design for a global location-based service, the following ADRs are proposed to cover **privacy**, **upgradability**, and **localization**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** Yelp handles a large volume of sensitive user and business data, including personal information, review content, and location history. Protecting this data is not only a legal obligation (e.g., GDPR, CCPA) but is essential for maintaining user trust and brand reputation. The current design mentions services handling data but lacks a formal architectural decision on how to protect it.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach. This involves integrating privacy and security controls into every stage of the system development lifecycle. Key practices will include:
+    * **Data Encryption:** Encrypt all sensitive data both in transit (using HTTPS/TLS) and at rest (in databases and object stores).
+    * **Access Control:** Implement the principle of least privilege, ensuring that services and employees only have access to the data they absolutely need.
+    * **Anonymization:** For analytics and machine learning tasks, remove or obfuscate personally identifiable information (PII).
+    * **Secure User Authentication:** Implement strong authentication mechanisms for users and business owners, including multi-factor authentication (MFA) where appropriate.
+    * **Auditing:** Log all access to sensitive data to monitor for and respond to suspicious activity.
+* **Consequences:**
+    * **Positive:** Ensures legal and regulatory compliance, builds user trust, and significantly reduces the risk of data breaches and misuse.
+    * **Negative:** Adds engineering and operational complexity and may introduce a small amount of latency due to encryption/decryption.
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** Yelp حجم زیادی از داده‌های حساس کاربران و کسب‌وکارها، از جمله اطلاعات شخصی، محتوای نظرات و سابقه مکان را مدیریت می‌کند. حفاظت از این داده‌ها نه تنها یک الزام قانونی است (مانند GDPR، CCPA)، بلکه برای حفظ اعتماد کاربر و اعتبار برند نیز ضروری است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد، اما فاقد تصمیم معماری رسمی در مورد نحوه حفاظت از آن‌ها است.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را اتخاذ خواهیم کرد. این شامل یکپارچه‌سازی کنترل‌های حریم خصوصی و امنیتی در هر مرحله از چرخه عمر توسعه سیستم است. اقدامات کلیدی شامل:
+        * **رمزنگاری داده‌ها:** تمام داده‌های حساس در حال انتقال (با استفاده از HTTPS/TLS) و در حال سکون (در پایگاه‌های داده و فضاهای ذخیره‌سازی) رمزنگاری خواهند شد.
+        * **کنترل دسترسی:** اصل حداقل دسترسی پیاده‌سازی خواهد شد، که اطمینان می‌دهد سرویس‌ها و کارمندان تنها به داده‌هایی که مطلقاً نیاز دارند دسترسی داشته باشند.
+        * **ناشناس‌سازی:** برای کارهای تحلیلی و یادگیری ماشین، اطلاعات قابل شناسایی شخصی (PII) حذف یا پنهان خواهند شد.
+        * **احراز هویت امن کاربر:** مکانیسم‌های احراز هویت قوی برای کاربران و صاحبان کسب‌وکار، از جمله احراز هویت چند عاملی (MFA) در صورت لزوم، پیاده‌سازی خواهد شد.
+        * **حسابرسی:** تمام دسترسی‌ها به داده‌های حساس ثبت خواهند شد تا فعالیت‌های مشکوک را نظارت و به آن‌ها پاسخ داده شود.
+    * **پیامدها:**
+        * **مثبت:** انطباق قانونی و مقرراتی را تضمین می‌کند، اعتماد کاربر را می‌سازد و ریسک نقض داده‌ها و سوءاستفاده را به شدت کاهش می‌دهد.
+        * **منفی:** پیچیدگی مهندسی و عملیاتی را اضافه می‌کند و ممکن است مقداری تأخیر به دلیل رمزنگاری/رمزگشایی ایجاد کند.
+
+---
+
+#### ADR 6: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** Yelp operates in multiple countries and languages. To expand into new markets and provide a compelling user experience, the system must support different languages, currencies, and regional formats for dates, numbers, and addresses. Hard-coding content or not having a clear strategy for this would severely limit growth.
+* **Decision:** We will design the application with **internationalization (I18n)** as a core principle. This includes:
+    * **Externalized Content:** All user-facing text, including business names, review content, and UI labels, will be stored in external resource files and databases that support multiple languages.
+    * **Client-driven Locale:** The client application will automatically detect the user's preferred language and region and pass this information to the backend in all API requests.
+    * **Centralized Formatting:** A dedicated service will handle all locale-specific formatting for numbers, currencies, and dates.
+* **Consequences:**
+    * **Positive:** The platform can be easily and quickly adapted for new markets, which is crucial for business expansion. A localized experience significantly improves user engagement and satisfaction.
+    * **Negative:** Adds some initial architectural and development complexity, and requires a dedicated process for managing translations and regional content.
+
+* **Farsi Version - ADR 6: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** Yelp در چندین کشور و به زبان‌های مختلف فعالیت می‌کند. برای گسترش به بازارهای جدید و ارائه یک تجربه کاربری جذاب، سیستم باید از زبان‌ها، ارزها و فرمت‌های منطقه‌ای مختلف برای تاریخ، اعداد و آدرس‌ها پشتیبانی کند. کدنویسی سخت‌افزاری محتوا یا نداشتن یک استراتژی واضح برای این موضوع، رشد را به شدت محدود می‌کند.
+    * **تصمیم:** ما برنامه را با **بین‌المللی‌سازی (I18n)** به عنوان یک اصل اصلی طراحی خواهیم کرد. این شامل:
+        * **محتوای بیرونی:** تمام متن‌های قابل مشاهده برای کاربر، از جمله نام کسب‌وکارها، محتوای نظرات و برچسب‌های رابط کاربری، در فایل‌های منابع خارجی و پایگاه‌های داده‌ای که از چندین زبان پشتیبانی می‌کنند، ذخیره خواهند شد.
+        * **لوکال کاربر محور:** برنامه مشتری به طور خودکار زبان و منطقه ترجیحی کاربر را تشخیص داده و این اطلاعات را در تمام درخواست‌های API به بک‌اند ارسال می‌کند.
+        * **فرمت‌بندی مرکزی:** یک سرویس اختصاصی تمام فرمت‌بندی‌های مخصوص لوکال برای اعداد، ارزها و تاریخ‌ها را مدیریت خواهد کرد.
+    * **پیامدها:**
+        * **مثبت:** پلتفرم می‌تواند به آسانی و به سرعت برای بازارهای جدید تطبیق یابد، که برای گسترش کسب‌وکار حیاتی است. یک تجربه محلی‌سازی شده تعامل و رضایت کاربر را به شدت افزایش می‌دهد.
+        * **منفی:** مقداری پیچیدگی اولیه در معماری و توسعه اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و محتوای منطقه‌ای است.
+
+---
+
+#### ADR 7: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** A high-traffic platform like Yelp requires continuous delivery of new features without causing service disruptions. A "big-bang" deployment of new code to all servers at once is too risky and can lead to a major outage. A robust strategy for **upgradability** is essential to minimize risk and enable rapid iteration.
+* **Decision:** We will use **feature flags** and a **gradual rollout (canary deployment)** process for all major releases.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to enable or disable features remotely without a code deployment. This provides an instant "kill switch" in case of issues.
+    * **Canary Deployment:** New versions of services will first be deployed to a small subset of production servers ("canaries") and closely monitored. If the performance and error rates are stable, the new version will be gradually rolled out to all servers.
+    * **A/B Testing:** This approach also supports A/B testing, allowing us to measure the impact of new features on key business metrics before a full release.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage, enables faster and more confident deployments, and supports data-driven decision-making for new features.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 7: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک پلتفرم با ترافیک بالا مانند Yelp نیازمند تحویل مداوم ویژگی‌های جدید بدون ایجاد اختلال در سرویس است. استقرار "انفجاری" کد جدید بر روی تمام سرورها به صورت همزمان بسیار خطرناک است و می‌تواند منجر به یک قطعی بزرگ شود. یک استراتژی قوی برای **قابلیت به‌روزرسانی** برای به حداقل رساندن ریسک و امکان تکرار سریع ضروری است.
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد ویژگی‌ها را از راه دور و بدون نیاز به استقرار کد فعال یا غیرفعال کنیم. این به عنوان یک سوئیچ قطع فوری در صورت بروز مشکل عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها ابتدا به زیرمجموعه کوچکی از سرورهای تولیدی ("قناری‌ها") مستقر شده و به دقت نظارت خواهند شد. اگر عملکرد و نرخ خطا پایدار باشد، نسخه جدید به تدریج به تمام سرورها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین از تست A/B پشتیبانی می‌کند و به ما امکان می‌دهد تأثیر ویژگی‌های جدید را بر معیارهای کلیدی کسب‌وکار قبل از انتشار کامل اندازه‌گیری کنیم.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به طور چشمگیری کاهش می‌یابد، امکان استقرارهای سریع‌تر و با اطمینان بیشتر را فراهم می‌کند و از تصمیم‌گیری داده‌محور برای ویژگی‌های جدید پشتیبانی می‌کند.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
