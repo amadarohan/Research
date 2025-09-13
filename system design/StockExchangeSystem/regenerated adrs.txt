@@ -1,0 +1,141 @@
+The provided Stock Exchange System design document outlines four Architecture Decision Records (ADRs) that address critical non-functional requirements. The existing ADRs focus on **performance**, **scalability**, **resilience**, and **data integrity**. For example, ADR 1 proposes an in-memory matching engine for ultra-low latency. ADR 2 discusses a hybrid data dissemination strategy using multicast and WebSockets for real-time market data. ADR 3 outlines a pre-trade risk management service to ensure financial integrity. Finally, ADR 4 addresses transactional persistence and recovery for critical trade data.
+
+However, a complete system design for a stock exchange needs to address other non-functional requirements that are not explicitly covered in the existing ADRs. The current document lacks a formal strategy for **security** and **privacy** (especially regarding sensitive user and order data), **localization** (for a global exchange), and **upgradability** to ensure safe and continuous feature releases.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+***
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use an In-Memory Matching Engine for Ultra-Low Latency
+
+* **Status:** Proposed
+* [cite_start]**Context:** Low-latency trade execution is a critical performance metric for a stock exchange[cite: 36]. [cite_start]High-frequency trading demands latency measured in microseconds, and using a disk-based database would introduce unacceptable latency[cite: 37].
+* [cite_start]**Decision:** The core Matching Engine will be an in-memory application[cite: 39]. [cite_start]All active orders will be stored in a specialized, volatile data structure in the server's RAM to eliminate disk I/O latency[cite: 40]. [cite_start]Persistence will be handled asynchronously by a separate service[cite: 41].
+* **Consequences:**
+    * [cite_start]**Positive:** This design provides the lowest possible latency for trade execution [cite: 43] [cite_start]and allows the system to process a very large number of orders per second[cite: 44].
+    * [cite_start]**Negative:** The primary order book is volatile, so a system crash could result in the loss of all active orders without a robust persistence mechanism[cite: 46]. [cite_start]The entire order book must also fit into the server's RAM[cite: 48].
+
+* **Farsi Version - ADR 1: استفاده از موتور تطبیق در حافظه برای تأخیر بسیار پایین**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** در یک سیستم بورس، زمان لازم برای تطبیق یک سفارش خرید با یک سفارش فروش یک معیار عملکرد حیاتی است[cite: 36]. [cite_start]معاملات با فرکانس بالا نیاز به تأخیر در حد میکروثانیه دارند و استفاده از یک پایگاه داده مبتنی بر دیسک منجر به تأخیر I/O غیرقابل قبول می‌شود[cite: 37].
+    * [cite_start]**تصمیم:** موتور تطبیق اصلی یک برنامه در حافظه خواهد بود[cite: 39]. [cite_start]تمام سفارشات فعال در یک ساختار داده فرار و تخصصی در RAM سرور ذخیره خواهند شد تا تأخیر I/O دیسک حذف شود[cite: 40]. [cite_start]پایداری به صورت ناهمگام توسط یک سرویس جداگانه مدیریت خواهد شد[cite: 41].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** این طراحی کمترین تأخیر ممکن را برای اجرای معاملات فراهم می‌کند [cite: 43] [cite_start]و به سیستم اجازه می‌دهد تعداد بسیار زیادی سفارش در ثانیه را پردازش کند[cite: 44].
+        * [cite_start]**منفی:** از آنجا که دفتر سفارش اصلی در حافظه است، خرابی سیستم می‌تواند منجر به از دست رفتن تمام سفارشات فعال شود، که نیاز به یک مکانیسم پایداری قوی دارد[cite: 46]. [cite_start]کل دفتر سفارش نیز باید در RAM سرور جای بگیرد[cite: 48].
+
+---
+
+#### ADR 2: Dissemination of Real-Time Market Data via Multicast/WebSockets
+
+* **Status:** Proposed
+* **Context:** A stock exchange must efficiently disseminate real-time market data to thousands of subscribers. [cite_start]The volume of data is immense, and delivery latency is critical[cite: 57].
+* [cite_start]**Decision:** For internal, high-performance clients, we will use **Multicast UDP** for market data dissemination to reduce network load on the publisher[cite: 59]. [cite_start]For external clients, a **WebSockets-based push service** will be used to provide real-time, bi-directional communication over the public internet[cite: 61].
+* **Consequences:**
+    * [cite_start]**Positive:** Multicast offers the lowest possible latency for internal data distribution [cite: 63] [cite_start]and is highly scalable[cite: 64]. [cite_start]WebSockets provide real-time data to a broader range of external clients[cite: 65].
+    * [cite_start]**Negative:** Multicast requires specialized network configuration and UDP is unreliable, requiring application-level handling for data loss[cite: 67, 68]. [cite_start]WebSockets require significant server resources to maintain persistent connections[cite: 70].
+
+* **Farsi Version - ADR 2: انتشار داده‌های بازار در زمان واقعی از طریق Multicast/WebSockets**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک بورس باید داده‌های بازار در زمان واقعی را به هزاران مشترک به صورت کارآمد توزیع کند. [cite_start]حجم داده‌ها بسیار زیاد است و تأخیر تحویل حیاتی است[cite: 57].
+    * [cite_start]**تصمیم:** برای توزیع داخلی و مشتریان با عملکرد بالا، از **Multicast UDP** برای انتشار داده‌های بازار استفاده خواهیم کرد تا بار شبکه بر روی منتشرکننده کاهش یابد[cite: 59]. [cite_start]برای مشتریان خارجی، یک سرویس مبتنی بر **WebSockets** برای فراهم کردن ارتباط دوطرفه در زمان واقعی از طریق اینترنت عمومی به کار گرفته خواهد شد[cite: 61].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** Multicast کمترین تأخیر ممکن را برای توزیع داخلی داده‌ها فراهم می‌کند [cite: 63] [cite_start]و بسیار مقیاس‌پذیر است[cite: 64]. [cite_start]WebSockets داده‌های در زمان واقعی را به طیف گسترده‌تری از مشتریان خارجی ارائه می‌دهد[cite: 65].
+        * [cite_start]**منفی:** Multicast نیاز به پیکربندی شبکه تخصصی دارد و UDP قابل اعتماد نیست، که نیازمند مدیریت از دست رفتن داده‌ها در سطح برنامه است[cite: 67, 68]. [cite_start]WebSockets برای حفظ ارتباطات پایدار به منابع سرور قابل توجهی نیاز دارد[cite: 70].
+
+---
+
+#### ADR 3: Order Validation and Risk Management as a Pre-Trade, Low-Latency Service
+
+* **Status:** Accepted
+* [cite_start]**Context:** Every order must undergo rigorous validation and risk checks before it can be executed to ensure regulatory compliance and financial stability[cite: 77]. [cite_start]These checks must be performed with extremely low latency[cite: 78].
+* [cite_start]**Decision:** The Risk Management Service will operate as a pre-trade, low-latency validation pipeline immediately after an order is received[cite: 80]. [cite_start]It will perform syntactic, semantic, and credit checks, and reject any non-compliant orders instantly to prevent them from reaching the Matching Engine[cite: 84].
+* **Consequences:**
+    * [cite_start]**Positive:** This approach prevents erroneous orders from impacting the market [cite: 87][cite_start], ensures regulatory compliance [cite: 87][cite_start], and shields the low-latency Matching Engine from unnecessary processing[cite: 89].
+    * [cite_start]**Negative:** It adds another critical path component that must be highly available and performant, and it requires real-time access to user account data[cite: 91, 94].
+
+* **Farsi Version - ADR 3: اعتبارسنجی سفارش و مدیریت ریسک به عنوان یک سرویس با تأخیر پایین قبل از معامله**
+    * **وضعیت:** پذیرفته شده
+    * [cite_start]**مقدمه:** هر سفارشی که به بورس ارسال می‌شود باید قبل از رسیدن به موتور تطبیق، تحت اعتبارسنجی و بررسی‌های ریسک دقیق قرار گیرد تا از انطباق با مقررات و پایداری مالی اطمینان حاصل شود[cite: 77]. [cite_start]این بررسی‌ها باید با تأخیر بسیار پایین انجام شوند[cite: 78].
+    * [cite_start]**تصمیم:** سرویس مدیریت ریسک به عنوان یک خط لوله اعتبارسنجی با تأخیر پایین قبل از معامله، بلافاصله پس از دریافت سفارش توسط سیستم مدیریت سفارش (OMS)، عمل خواهد کرد[cite: 80]. [cite_start]این سرویس مجموعه‌ای از بررسی‌ها شامل اعتبارسنجی نحوی، معنایی و اعتباری را انجام خواهد داد و هر سفارش نامنطبق را فوراً رد می‌کند تا از رسیدن آن به موتور تطبیق جلوگیری شود[cite: 84].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** این رویکرد از تأثیرگذاری سفارشات نادرست بر بازار جلوگیری می‌کند [cite: 87][cite_start]، انطباق با مقررات را تضمین می‌کند [cite: 87] [cite_start]و موتور تطبیق را از پردازش غیرضروری حفظ می‌کند[cite: 89].
+        * [cite_start]**منفی:** یک جزء مسیر حیاتی دیگر را اضافه می‌کند که باید بسیار در دسترس و با عملکرد بالا باشد و نیاز به دسترسی در زمان واقعی به داده‌های حساب کاربر دارد[cite: 91, 94].
+
+---
+
+#### ADR 4: Transactional Persistence and Recovery for Trade Data
+
+* **Status:** Proposed
+* [cite_start]**Context:** Executed trades are immutable financial transactions that must be recorded with absolute durability and consistency[cite: 101]. [cite_start]Although the Matching Engine is in-memory for speed, all events must be persistently stored to prevent data loss in case of a system failure[cite: 102].
+* [cite_start]**Decision:** We will use a **write-ahead log (WAL)** and **synchronous replication** for critical trade data[cite: 103, 104]. [cite_start]The Matching Engine will asynchronously write events to a local WAL for immediate durability before confirming the operation[cite: 103]. [cite_start]A Persistence Service will then synchronously replicate these WAL entries to a highly available Historical Data Store[cite: 105].
+* **Consequences:**
+    * [cite_start]**Positive:** Ensures that no trade is ever lost [cite: 108][cite_start], provides strong consistency for auditing and reporting [cite: 109][cite_start], and enables a fast recovery process with minimal downtime[cite: 110].
+    * [cite_start]**Negative:** Synchronous replication adds a small amount of latency [cite: 112] [cite_start]and building a robust WAL and replication system is a complex engineering challenge[cite: 114].
+
+* **Farsi Version - ADR 4: پایداری تراکنشی و بازیابی داده‌های معامله**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** معاملات اجرا شده، تراکنش‌های مالی تغییرناپذیری هستند که باید با پایداری و سازگاری مطلق ثبت شوند[cite: 101]. [cite_start]اگرچه موتور تطبیق برای سرعت در حافظه کار می‌کند، تمام رویدادها باید به صورت پایدار ذخیره شوند تا در صورت خرابی سیستم، هیچ داده‌ای از دست نرود[cite: 102].
+    * [cite_start]**تصمیم:** ما از یک **لاگ پیش‌نویس (WAL)** و استراتژی **همگام‌سازی همزمان (synchronous replication)** برای داده‌های حیاتی معامله استفاده خواهیم کرد[cite: 103, 104]. [cite_start]موتور تطبیق به صورت ناهمگام تمام رویدادهای سفارش را به یک لاگ پیش‌نویس محلی (WAL) می‌نویسد تا قبل از تأیید عملیات به سیستم‌های بالادستی، پایداری فوری را تضمین کند[cite: 103]. [cite_start]سپس یک سرویس پایداری اختصاصی این ورودی‌های WAL را به صورت همزمان به یک فروشگاه داده تاریخی (Historical Data Store) بسیار در دسترس و خوشه‌ای، همگام‌سازی خواهد کرد[cite: 105].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** تضمین می‌کند که هیچ معامله‌ای هرگز از دست نمی‌رود [cite: 108][cite_start]، سازگاری قوی برای حسابرسی و گزارش‌دهی فراهم می‌کند [cite: 109] [cite_start]و امکان بازیابی سریع با حداقل زمان از کارافتادگی را فراهم می‌سازد[cite: 110].
+        * [cite_start]**منفی:** همگام‌سازی همزمان ذاتاً مقداری تأخیر جزئی اضافه می‌کند [cite: 112] [cite_start]و ساخت یک سیستم WAL و همگام‌سازی قوی یک چالش مهندسی پیچیده است[cite: 114].
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more robust and comprehensive design for a stock exchange, the following ADRs are proposed to cover **privacy**, **security**, and **upgradability**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** A stock exchange handles highly sensitive data, including trader identities, account balances, order history, and potentially proprietary trading strategies. The integrity of this data is paramount, as a breach or compromise could lead to massive financial losses and a complete loss of trust. The current design focuses on transactional integrity but does not explicitly outline a strategy for protecting data from unauthorized access.
+* **Decision:** We will adopt a **"Security by Design"** approach to protect sensitive data at all levels. Key decisions include:
+    * **End-to-End Encryption:** All data in transit, including orders from brokerage firms and market data dissemination, will be encrypted using industry-standard protocols (e.g., TLS). Sensitive data at rest (e.g., account balances, historical order logs) will also be encrypted.
+    * **Strong Access Control:** The principle of least privilege will be enforced across all services. Services and personnel will only have access to the data they absolutely need to perform their functions. Access to the Matching Engine and other core components will be highly restricted and logged.
+    * **Tokenization of PII:** Sensitive personally identifiable information (PII), such as account numbers or trader identities, will be tokenized or pseudonymized where possible to reduce exposure.
+    * **Audit Logging:** All access to and modifications of sensitive financial data will be logged in an immutable audit trail for regulatory compliance and forensic analysis.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of data breaches and financial fraud, ensures regulatory compliance, and builds trust with market participants.
+    * **Negative:** Adds a new layer of complexity to the system and may introduce a minor performance overhead for encryption/decryption, which must be carefully managed in a low-latency environment.
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک بورس داده‌های بسیار حساسی را مدیریت می‌کند، از جمله هویت معامله‌گران، موجودی حساب‌ها، سابقه سفارش‌ها و به طور بالقوه استراتژی‌های معاملاتی اختصاصی. یکپارچگی این داده‌ها بسیار حیاتی است، زیرا یک نقض یا به خطر افتادن می‌تواند منجر به زیان‌های مالی بزرگ و از دست رفتن کامل اعتماد شود. طراحی فعلی بر یکپارچگی تراکنشی تمرکز دارد اما به طور صریح یک استراتژی برای محافظت از داده‌ها در برابر دسترسی غیرمجاز ارائه نمی‌دهد.
+    * **تصمیم:** ما رویکرد **"امنیت از طریق طراحی"** را برای حفاظت از داده‌های حساس در تمام سطوح اتخاذ خواهیم کرد. تصمیمات کلیدی شامل:
+        * **رمزنگاری سرتاسری:** تمام داده‌ها در حال انتقال، از جمله سفارشات از شرکت‌های کارگزاری و انتشار داده‌های بازار، با استفاده از پروتکل‌های استاندارد صنعتی (مانند TLS) رمزنگاری خواهند شد. داده‌های حساس در حال سکون (مانند موجودی حساب‌ها، لاگ‌های تاریخی سفارش) نیز رمزنگاری خواهند شد.
+        * **کنترل دسترسی قوی:** اصل حداقل دسترسی در تمام سرویس‌ها اجرا خواهد شد. سرویس‌ها و کارکنان تنها به داده‌هایی که مطلقاً برای انجام وظایف خود نیاز دارند دسترسی خواهند داشت. دسترسی به موتور تطبیق و سایر اجزای اصلی به شدت محدود و ثبت خواهد شد.
+        * **توکن‌سازی PII:** اطلاعات قابل شناسایی شخصی حساس، مانند شماره حساب‌ها یا هویت معامله‌گران، در صورت امکان برای کاهش ریسک، توکن‌سازی یا مستعارسازی خواهند شد.
+        * **ثبت حسابرسی:** تمام دسترسی‌ها و تغییرات در داده‌های مالی حساس در یک مسیر حسابرسی تغییرناپذیر برای انطباق با مقررات و تحلیل‌های قانونی ثبت خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** ریسک نقض داده‌ها و کلاهبرداری مالی را به شدت کاهش می‌دهد، انطباق با مقررات را تضمین می‌کند و اعتماد مشارکت‌کنندگان بازار را می‌سازد.
+        * **منفی:** یک لایه پیچیدگی جدید به سیستم اضافه می‌کند و ممکن است یک سربار عملکردی جزئی برای رمزنگاری/رمزگشایی ایجاد کند که باید به دقت در یک محیط با تأخیر پایین مدیریت شود.
+
+---
+
+#### ADR 6: Incremental Upgrades and A/B Testing for System Enhancements
+
+* **Status:** Proposed
+* **Context:** A stock exchange is a mission-critical system that operates 24/7. Deploying new features or optimizations (e.g., a new matching algorithm) can be extremely risky. A "big-bang" release to all systems at once is unacceptable due to the potential for catastrophic failure. A robust strategy for **upgradability** that minimizes risk is essential.
+* **Decision:** We will implement a combination of **A/B testing** and **gradual rollout (canary deployment)** for all major system enhancements.
+    * **A/B Testing:** New algorithms or features will first be deployed to a small, isolated "test" market or a subset of non-production traffic. The new version will run in parallel with the old one, and performance metrics (e.g., latency, throughput) and trade outcomes will be compared.
+    * **Canary Deployment:** When a new version is deemed stable, it will be gradually introduced into the main production environment, starting with a small percentage of order flow and slowly increasing. This allows us to monitor for any unintended side effects in a live environment without affecting the entire market.
+    * **Feature Flags:** Feature flags will be used to enable or disable new features remotely, providing an instant "kill switch" in case a new feature causes issues.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage due to a faulty upgrade. Allows for continuous improvement and rapid iteration on core functionality without disrupting live trading.
+    * **Negative:** Adds a new layer of system and operational complexity for managing parallel versions, traffic routing, and monitoring.
+
+* **Farsi Version - ADR 6: ارتقاءهای افزایشی و تست A/B برای بهبودهای سیستم**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک بورس یک سیستم حیاتی است که به صورت ۲۴/۷ کار می‌کند. استقرار ویژگی‌ها یا بهینه‌سازی‌های جدید (مانند یک الگوریتم تطبیق جدید) می‌تواند بسیار خطرناک باشد. یک انتشار "انفجاری" به همه سیستم‌ها به صورت همزمان به دلیل احتمال خرابی فاجعه‌بار غیرقابل قبول است. یک استراتژی قوی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند، ضروری است.
+    * **تصمیم:** ما ترکیبی از **تست A/B** و **انتشار تدریجی (canary deployment)** را برای تمام بهبودهای اصلی سیستم پیاده‌سازی خواهیم کرد.
+        * **تست A/B:** الگوریتم‌ها یا ویژگی‌های جدید ابتدا در یک بازار "آزمایشی" کوچک و ایزوله یا برای زیرمجموعه‌ای از ترافیک غیرتولیدی مستقر خواهند شد. نسخه جدید به صورت موازی با نسخه قدیمی اجرا می‌شود و معیارهای عملکرد (مانند تأخیر، توان عملیاتی) و نتایج معاملات مقایسه خواهند شد.
+        * **استقرار قناری:** هنگامی که یک نسخه جدید پایدار تشخیص داده شد، به تدریج به محیط تولید اصلی معرفی می‌شود، با شروع از درصد کمی از جریان سفارش و به آرامی افزایش می‌یابد. این به ما اجازه می‌دهد تا هرگونه اثرات جانبی ناخواسته را در یک محیط زنده و بدون تأثیر بر کل بازار نظارت کنیم.
+        * **فلگ‌های ویژگی:** از فلگ‌های ویژگی برای فعال یا غیرفعال کردن ویژگی‌های جدید از راه دور استفاده خواهد شد، که یک "سوئیچ قطع فوری" در صورت بروز مشکل توسط یک ویژگی جدید فراهم می‌کند.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به دلیل یک ارتقاء معیوب به شدت کاهش می‌یابد. امکان بهبود مستمر و تکرار سریع بر روی عملکردهای اصلی را بدون ایجاد اختلال در معاملات زنده فراهم می‌کند.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم و عملیاتی را برای مدیریت نسخه‌های موازی، مسیریابی ترافیک و نظارت اضافه می‌کند.
