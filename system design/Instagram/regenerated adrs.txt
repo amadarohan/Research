@@ -1,0 +1,164 @@
+The Instagram system design document provides four Architecture Decision Records (ADRs) that address critical non-functional requirements. [cite_start]The existing ADRs focus heavily on **scalability**, **performance**, and **maintainability**[cite: 445, 469, 495, 514]. [cite_start]For example, ADR 1 details a fan-out on read strategy for feeds to handle the high read-to-write ratio[cite: 446]. [cite_start]ADR 2 proposes an asynchronous media processing pipeline to handle the massive volume of uploads without becoming a bottleneck[cite: 472, 481]. [cite_start]ADR 3 recommends a specialized graph database for the social graph, optimizing for complex queries[cite: 497]. [cite_start]Finally, ADR 4 suggests an event-driven architecture to manage the immense volume of user activity[cite: 518].
+
+However, a complete system design for a global platform like Instagram requires explicit decisions on other non-functional requirements not covered in the existing ADRs. The current document lacks a formal strategy for **privacy**, **upgradability**, **localization**, and **leverageability**. A robust system must be designed to protect sensitive user data, allow for safe and continuous feature releases, adapt to different languages and regions, and provide tools for business and developer use.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+***
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Fan-out on Read Strategy for the User Feed
+
+* **Status:** Proposed
+* [cite_start]**Context:** Instagram has a high read-to-write ratio, where a single post (write) is viewed by many users (reads)[cite: 446]. [cite_start]A fan-out on write model is inefficient at scale due to write amplification, while fan-out on read is more suitable[cite: 447, 449].
+* [cite_start]**Decision:** We will use a Fan-out on Read strategy[cite: 450]. [cite_start]When a user requests their feed, the Feed Service will fetch content from the users they follow, aggregate it, and cache the result for subsequent requests[cite: 451, 452, 453].
+* **Consequences:**
+    * [cite_start]**Positive:** The system scales effectively with the number of followers [cite: 454][cite_start], the write path is simple [cite: 457][cite_start], feeds are always fresh [cite: 458][cite_start], and complex ranking algorithms are easier to implement[cite: 459].
+    * [cite_start]**Negative:** Read latency can increase for users who follow many people [cite: 460][cite_start], feed generation can be computationally expensive [cite: 462][cite_start], and the system's complexity is higher due to caching[cite: 463].
+
+* **Farsi Version - ADR 1: استفاده از استراتژی Fan-out on Read برای فید کاربر**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** اینستاگرام نسبت خواندن به نوشتن بسیار بالایی دارد؛ [cite_start]یک پست (نوشتن) توسط میلیون‌ها فالوور (خواندن) دیده می‌شود[cite: 446]. [cite_start]مدل fan-out on write در مقیاس بزرگ به دلیل ترافیک سنگین نوشتن ناکارآمد است، در حالی که مدل fan-out on read مناسب‌تر است[cite: 447, 449].
+    * [cite_start]**تصمیم:** ما از استراتژی Fan-out on Read برای تولید فید کاربر استفاده خواهیم کرد[cite: 450]. [cite_start]زمانی که کاربر فید خود را درخواست می‌کند، سرویس فید محتوا را از کاربرانی که او دنبال می‌کند دریافت، آن را تجمیع و نتیجه را برای درخواست‌های بعدی کش می‌کند[cite: 451, 452, 453].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** سیستم به طور مؤثر با تعداد فالوورها مقیاس‌پذیر است [cite: 454][cite_start]، مسیر نوشتن ساده است [cite: 457][cite_start]، فیدها همیشه تازه هستند [cite: 458] [cite_start]و پیاده‌سازی الگوریتم‌های رتبه‌بندی پیچیده آسان‌تر است[cite: 459].
+        * [cite_start]**منفی:** تأخیر در خواندن برای کاربرانی که افراد زیادی را دنبال می‌کنند ممکن است افزایش یابد [cite: 460][cite_start]، تولید فید می‌تواند از نظر محاسباتی پرهزینه باشد [cite: 462] [cite_start]و پیچیدگی سیستم به دلیل کشینگ بالاتر است[cite: 463].
+
+---
+
+#### ADR 2: Asynchronous Media Processing Pipeline for Uploads
+
+* **Status:** Proposed
+* [cite_start]**Context:** Instagram handles a massive volume of user-generated photos and videos[cite: 469]. [cite_start]Processing media synchronously during upload would lead to high latency and a poor user experience[cite: 470, 471].
+* [cite_start]**Decision:** We will implement an asynchronous media processing pipeline[cite: 473]. [cite_start]The Upload Service will first stream raw media to object storage and then publish a message to a queue[cite: 474, 476]. [cite_start]Dedicated workers will consume messages, process the media (e.g., generate multiple resolutions, transcode videos), and store the processed versions back to the Media Store[cite: 477, 478, 479].
+* **Consequences:**
+    * [cite_start]**Positive:** Improves scalability and resilience for uploads [cite: 481][cite_start], optimizes content delivery for various devices [cite: 482][cite_start], and provides a better user experience by giving quick upload confirmation[cite: 484].
+    * [cite_start]**Negative:** Increases system complexity [cite: 485][cite_start], introduces eventual consistency [cite: 486][cite_start], and requires significant computational resources for processing[cite: 487].
+
+* **Farsi Version - ADR 2: خط لوله پردازش رسانه ناهمگام برای آپلودها**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** اینستاگرام حجم عظیمی از عکس‌ها و ویدیوهای تولید شده توسط کاربر را مدیریت می‌کند[cite: 469]. [cite_start]پردازش همزمان این رسانه‌ها در حین آپلود منجر به تأخیر بالا و تجربه کاربری ضعیف می‌شود[cite: 470, 471].
+    * [cite_start]**تصمیم:** ما یک خط لوله پردازش رسانه ناهمگام را پیاده‌سازی خواهیم کرد[cite: 473]. [cite_start]سرویس آپلود ابتدا رسانه خام را به فضای ذخیره‌سازی ابری ارسال کرده و سپس یک پیام را به یک صف پیام منتشر می‌کند[cite: 474, 476]. [cite_start]پردازشگران اختصاصی پیام‌ها را مصرف کرده، رسانه را پردازش می‌کنند (مثلاً تولید اندازه‌ها و وضوح‌های مختلف، تبدیل ویدیو) و نسخه‌های پردازش شده را دوباره در فضای ذخیره‌سازی رسانه ذخیره می‌کنند[cite: 477, 478, 479].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** مقیاس‌پذیری و انعطاف‌پذیری برای آپلودها را بهبود می‌بخشد [cite: 481][cite_start]، تحویل محتوا را برای دستگاه‌های مختلف بهینه می‌کند [cite: 482] [cite_start]و با ارائه تأیید سریع آپلود، تجربه کاربری بهتری فراهم می‌کند[cite: 484].
+        * [cite_start]**منفی:** پیچیدگی سیستم را افزایش می‌دهد [cite: 485][cite_start]، سازگاری نهایی را معرفی می‌کند [cite: 486] [cite_start]و نیاز به منابع محاسباتی قابل توجهی برای پردازش دارد[cite: 487].
+
+---
+
+#### ADR 3: Social Graph Data Storage with a Graph Database
+
+* **Status:** Proposed
+* [cite_start]**Context:** The social graph is critical for Instagram's core functionality[cite: 495]. [cite_start]Traditional relational databases are inefficient for complex graph traversals at scale due to many JOIN operations, leading to performance bottlenecks[cite: 497].
+* [cite_start]**Decision:** The Social Graph Service will use a Graph Database (e.g., Neo4j or a custom distributed solution)[cite: 498]. [cite_start]This is purpose-built for storing and querying interconnected data, where users are nodes and relationships are edges[cite: 499].
+* **Consequences:**
+    * [cite_start]**Positive:** Queries for traversals (e.g., finding mutual followers) are extremely fast [cite: 501][cite_start], data modeling is natural [cite: 503][cite_start], and the system is horizontally scalable[cite: 505].
+    * [cite_start]**Negative:** Requires specialized expertise [cite: 506][cite_start], adds operational complexity [cite: 507][cite_start], and may be more expensive than other database types[cite: 508].
+
+* **Farsi Version - ADR 3: ذخیره‌سازی داده‌های Social Graph با یک پایگاه داده گرافی**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** Social Graph برای عملکرد اصلی اینستاگرام حیاتی است[cite: 495]. [cite_start]پایگاه‌های داده رابطه‌ای سنتی برای پیمایش‌های گرافی پیچیده در مقیاس بزرگ به دلیل عملیات‌های JOIN متعدد ناکارآمد هستند و منجر به گلوگاه‌های عملکردی می‌شوند[cite: 497].
+    * [cite_start]**تصمیم:** سرویس Social Graph عمدتاً از یک پایگاه داده گرافی (مانند Neo4j یا یک راهکار گرافی توزیع‌شده سفارشی) استفاده خواهد کرد[cite: 498]. [cite_start]این پایگاه داده برای ذخیره‌سازی و پرس‌وجو از داده‌های به هم پیوسته، که در آن کاربران گره‌ها و روابط «دنبال کردن» لبه‌ها هستند، بهینه شده است[cite: 499].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** پرس‌وجوها برای پیمایش‌ها (مثلاً پیدا کردن فالوورهای متقابل) فوق‌العاده سریع هستند [cite: 501][cite_start]، مدل‌سازی داده طبیعی است [cite: 503] [cite_start]و سیستم به صورت افقی مقیاس‌پذیر است[cite: 505].
+        * [cite_start]**منفی:** نیاز به تخصص دارد [cite: 506][cite_start]، پیچیدگی عملیاتی را افزایش می‌دهد [cite: 507] [cite_start]و ممکن است گران‌تر از انواع دیگر پایگاه داده باشد[cite: 508].
+
+---
+
+#### ADR 4: Event-Driven Activity Logging and Real-time Notifications
+
+* **Status:** Proposed
+* [cite_start]**Context:** Instagram generates a massive volume of user activity events (likes, comments, new posts)[cite: 514]. [cite_start]Writing every event directly to a traditional database would create a write bottleneck at scale[cite: 517].
+* [cite_start]**Decision:** We will use an event-driven architecture with a distributed message queue like Apache Kafka as a central hub[cite: 518]. [cite_start]When a user performs an action, the Activity Service will publish an event to a Kafka topic, and various services will consume these events for different purposes, such as persistence, notifications, and analytics[cite: 519, 520, 521].
+* **Consequences:**
+    * [cite_start]**Positive:** Provides high throughput and scalability [cite: 524][cite_start], loose coupling [cite: 525][cite_start], and resilience against failures [cite: 526][cite_start], while enabling real-time processing[cite: 527].
+    * [cite_start]**Negative:** Increases system complexity [cite: 529][cite_start], introduces eventual consistency [cite: 530][cite_start], and requires consumers to be idempotent to prevent issues from duplicate messages[cite: 532].
+
+* **Farsi Version - ADR 4: ثبت فعالیت رویداد-محور و اعلان‌های در زمان واقعی**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** اینستاگرام حجم عظیمی از رویدادهای فعالیت کاربر را در هر ثانیه تولید می‌کند (لایک، کامنت، پست جدید، فالو)[cite: 514]. [cite_start]نوشتن مستقیم هر رویداد به یک پایگاه داده سنتی یک گلوگاه نوشتن بزرگ در مقیاس بالا ایجاد خواهد کرد[cite: 517].
+    * [cite_start]**تصمیم:** ما یک معماری رویداد-محور را با استفاده از یک صف پیام توزیع‌شده مانند Apache Kafka به عنوان یک هاب مرکزی برای تمام ثبت فعالیت کاربر و پردازش در زمان واقعی پیاده‌سازی خواهیم کرد[cite: 518]. [cite_start]زمانی که کاربر اقدامی را انجام می‌دهد، سرویس فعالیت یک رویداد غنی را به یک موضوع کافکا منتشر می‌کند و سرویس‌های مختلف مصرف‌کننده‌ی این رویدادها خواهند بود[cite: 519, 520, 521].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** توان عملیاتی بالا و مقیاس‌پذیری را فراهم می‌کند [cite: 524][cite_start]، وابستگی را کاهش می‌دهد [cite: 525][cite_start]، و در برابر خرابی‌ها مقاوم است [cite: 526][cite_start]، در حالی که پردازش در زمان واقعی را ممکن می‌سازد[cite: 527].
+        * [cite_start]**منفی:** پیچیدگی سیستم را افزایش می‌دهد [cite: 529][cite_start]، سازگاری نهایی را معرفی می‌کند [cite: 530] [cite_start]و نیازمند طراحی مصرف‌کننده‌ها به صورت ایزوله‌ است تا از مشکلات ناشی از پیام‌های تکراری جلوگیری شود[cite: 532].
+
+***
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more comprehensive design for a global social media platform like Instagram, the following ADRs are proposed to cover **privacy**, **upgradability**, and **localization**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** Instagram handles vast amounts of sensitive user data, including personal profiles, direct messages, photos, and location data. The collection and use of this data must be protected to build user trust and comply with global regulations (e.g., GDPR). Implementing security as an afterthought is risky and can lead to catastrophic data breaches.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach throughout the system. This involves:
+    * **Data Minimization:** Only collect and store the data absolutely necessary for core functionality.
+    * **Data Encryption:** All sensitive data will be encrypted both in transit (using HTTPS/TLS) and at rest (in databases and object storage).
+    * **Access Control:** Implement the principle of least privilege, ensuring services and employees only have access to the data they need.
+    * **Anonymization & Pseudonymization:** Personal identifiers will be removed or obfuscated for analytics and machine learning tasks to protect user privacy.
+    * **Auditability:** Log all access to sensitive data to monitor for and respond to suspicious activity.
+* **Consequences:**
+    * **Positive:** Increases user trust, ensures compliance with data protection laws, and significantly reduces the risk of data breaches.
+    * **Negative:** Adds engineering and operational complexity and may introduce a small amount of latency due to encryption/decryption.
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** اینستاگرام حجم عظیمی از داده‌های حساس کاربران، از جمله پروفایل‌های شخصی، پیام‌های مستقیم، عکس‌ها و داده‌های مکانی را مدیریت می‌کند. جمع‌آوری و استفاده از این داده‌ها باید محافظت شود تا اعتماد کاربر جلب شده و با مقررات جهانی مطابقت داشته باشد. پیاده‌سازی امنیت به عنوان یک کار فرعی ریسک‌پذیر است و می‌تواند منجر به نقض‌های فاجعه‌بار داده‌ها شود.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را در سراسر سیستم اتخاذ خواهیم کرد. این شامل:
+        * **به حداقل رساندن داده:** تنها داده‌هایی که برای عملکرد اصلی کاملاً ضروری هستند، جمع‌آوری و ذخیره می‌شوند.
+        * **رمزنگاری داده‌ها:** تمام داده‌های حساس در حال انتقال (با استفاده از HTTPS/TLS) و در حال سکون (در پایگاه‌های داده و فضای ذخیره‌سازی) رمزنگاری خواهند شد.
+        * **کنترل دسترسی:** اصل کمترین دسترسی پیاده‌سازی می‌شود، و اطمینان می‌دهد که سرویس‌ها و کارمندان تنها به داده‌هایی که نیاز دارند دسترسی داشته باشند.
+        * **ناشناس‌سازی و مستعارسازی:** شناسه‌های شخصی برای کارهای تحلیلی و یادگیری ماشین حذف یا پنهان می‌شوند تا از حریم خصوصی کاربر محافظت شود.
+        * **قابلیت حسابرسی:** تمام دسترسی‌ها به داده‌های حساس ثبت می‌شوند تا فعالیت‌های مشکوک را شناسایی و به آن‌ها پاسخ داده شود.
+    * **پیامدها:**
+        * **مثبت:** اعتماد کاربر را افزایش می‌دهد، انطباق با قوانین حفاظت از داده‌ها را تضمین می‌کند و ریسک نقض داده‌ها را به شدت کاهش می‌دهد.
+        * **منفی:** پیچیدگی مهندسی و عملیاتی را اضافه می‌کند و ممکن است مقداری تأخیر به دلیل رمزنگاری/رمزگشایی ایجاد کند.
+
+---
+
+#### ADR 6: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** As a high-traffic, continuous-delivery platform, deploying new features to Instagram's user base of billions is extremely risky. A faulty deployment can cause widespread outages and reputational damage. A robust strategy for **upgradability** that minimizes risk is essential.
+* **Decision:** We will use a combination of **feature flags** and a **gradual rollout (canary deployment)** process for all major feature releases. Feature flags will act as an instant kill switch, allowing us to enable or disable features remotely without a code deployment. New versions of services will first be deployed to a small percentage of users (a canary group) to monitor for issues before a full rollout.
+* **Consequences:**
+    * **Positive:** Dramatically reduces the risk of a major outage, enables developers to release code more frequently and with greater confidence, and supports A/B testing to measure the impact of new features.
+    * **Negative:** Adds a new layer of system complexity and can make debugging issues that only appear in the canary group more challenging.
+
+* **Farsi Version - ADR 6: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** به عنوان یک پلتفرم با ترافیک بالا و تحویل مداوم، انتشار ویژگی‌های جدید برای میلیاردها کاربر اینستاگرام بسیار خطرناک است. یک استقرار معیوب می‌تواند باعث قطعی‌های گسترده و آسیب به اعتبار شود. یک استراتژی قوی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند، ضروری است.
+    * **تصمیم:** ما از ترکیبی از **فلگ‌های ویژگی** و یک فرآیند **انتشار تدریجی (canary deployment)** برای تمام انتشار‌های اصلی ویژگی استفاده خواهیم کرد. فلگ‌های ویژگی به عنوان یک سوئیچ قطع فوری عمل خواهند کرد و به ما اجازه می‌دهند ویژگی‌ها را از راه دور و بدون استقرار کد فعال یا غیرفعال کنیم. نسخه‌های جدید سرویس‌ها ابتدا برای درصد کوچکی از کاربران (گروه قناری) مستقر و به دقت نظارت می‌شوند تا قبل از انتشار کامل، مشکلات احتمالی شناسایی شوند.
+    * **پیامدها:**
+        * **مثبت:** ریسک یک قطعی بزرگ به طور چشمگیری کاهش می‌یابد، به توسعه‌دهندگان اجازه می‌دهد کد را با دفعات بیشتر و با اطمینان بیشتری منتشر کنند، و از تست A/B برای اندازه‌گیری تأثیر ویژگی‌های جدید پشتیبانی می‌کند.
+        * **منفی:** یک لایه جدید از پیچیدگی سیستم را اضافه می‌کند و می‌تواند اشکال‌زدایی مشکلاتی را که فقط در گروه قناری ظاهر می‌شوند، چالش‌برانگیزتر کند.
+
+---
+
+#### ADR 7: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** Instagram is a global platform that must cater to users in hundreds of countries speaking different languages and using different formats (e.g., date, time, numbers). The current design does not include a formal strategy for **internationalization (I18n)** and **localization (L10n)**, which is crucial for market penetration and user experience.
+* **Decision:** We will design the application with **internationalization as a core principle**. This means:
+    * **Externalized Content:** All user-facing text and messages will be stored in external files and databases, separate from the code, to be easily translatable.
+    * **Client-driven Locale:** The client application will detect the user's preferred language and regional settings and pass this information to the backend in all API requests.
+    * **Dedicated Formatting Service:** A central service will handle all locale-specific formatting for dates, times, and numbers.
+    * **Multi-language Data:** Content metadata in the database will be designed to handle multi-language captions and hashtags.
+* **Consequences:**
+    * **Positive:** The platform can be easily adapted for new markets, which is crucial for business growth . A localized experience improves user engagement and satisfaction.
+    * **Negative:** Adds some initial architectural complexity and requires a dedicated operational process for managing translations and content.
+
+* **Farsi Version - ADR 7: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** اینستاگرام یک پلتفرم جهانی است که باید به کاربران در صدها کشور با زبان‌های مختلف و فرمت‌های متفاوت (مثلاً تاریخ، زمان، اعداد) خدمات ارائه دهد. طراحی فعلی یک استراتژی رسمی برای **بین‌المللی‌سازی (I18n)** و **محلی‌سازی (L10n)** را در بر نمی‌گیرد، که برای نفوذ در بازار و تجربه کاربری حیاتی است.
+    * **تصمیم:** ما برنامه را با **بین‌المللی‌سازی به عنوان یک اصل اصلی** طراحی خواهیم کرد. این به معنی:
+        * **محتوای بیرونی:** تمام متن‌ها و پیام‌های قابل مشاهده برای کاربر در فایل‌ها و پایگاه‌های داده خارجی، جدا از کد، ذخیره خواهند شد تا به راحتی قابل ترجمه باشند.
+        * **لوکال کاربر محور:** برنامه مشتری زبان و تنظیمات منطقه‌ای ترجیحی کاربر را تشخیص داده و این اطلاعات را در تمام درخواست‌های API به بک‌اند ارسال خواهد کرد.
+        * **سرویس فرمت‌بندی اختصاصی:** یک سرویس مرکزی تمام فرمت‌بندی‌های مخصوص لوکال برای تاریخ، زمان و اعداد را مدیریت خواهد کرد.
+        * **داده‌های چندزبانه:** فراداده‌های محتوا در پایگاه داده به گونه‌ای طراحی خواهند شد که بتوانند کپشن‌ها و هشتگ‌های چندزبانه را پشتیبانی کنند.
+    * **پیامدها:**
+        * **مثبت:** پلتفرم می‌تواند به آسانی برای بازارهای جدید تطبیق یابد، که برای رشد کسب‌وکار حیاتی است. یک تجربه محلی‌سازی شده تعامل و رضایت کاربر را بهبود می‌بخشد.
+        * **منفی:** مقداری پیچیدگی معماری اولیه را اضافه می‌کند و نیاز به یک فرآیند عملیاتی اختصاصی برای مدیریت ترجمه‌ها و محتوا دارد.
