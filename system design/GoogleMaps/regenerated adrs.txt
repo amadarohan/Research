@@ -1,0 +1,208 @@
+Based on the Google Maps system design document you provided, here is an analysis of the existing Architecture Decision Records (ADRs) and a proposal for new ones to address any missing non-functional requirements.
+
+The provided ADRs are highly focused on **scalability**, **performance**, and **maintainability**. [cite_start]For example, ADR 1 and 4 propose using specialized distributed databases and search indexes to handle the immense volume and complexity of geospatial data and search queries[cite: 35, 105]. [cite_start]ADR 2 and 3 detail strategies for real-time data ingestion and hybrid map delivery to ensure low latency and high throughput for traffic updates and map rendering[cite: 57, 80]. These decisions directly support a system that can handle global scale and provide a high-quality user experience.
+
+However, a complete system design for a service like Google Maps also needs to consider non-functional requirements that are not explicitly addressed in these ADRs. Specifically, the current design lacks explicit decisions regarding **security** and **privacy** (given the vast amounts of user and location data), **internationalization** and **localization** (crucial for a global product), and a formal plan for **upgradability** to ensure continuous evolution without disruption.
+
+I will now provide the Farsi translations for the existing ADRs from the file, as you requested, and then propose new ADRs to cover the missing requirements.
+
+---
+
+### Existing Architecture Decision Records (ADRs) with Farsi Translations
+
+Here are the four existing ADRs from the provided file, each with a full Farsi translation.
+
+#### ADR 1: Use a Specialized Geospatial Database for Scalable Mapping and Routing
+
+* **Status:** Proposed
+* [cite_start]**Context:** A service like Google Maps handles a massive scale of geospatial data, and traditional databases are not suited for the volume and complexity of specialized queries like proximity searches and graph traversal[cite: 33, 34].
+* [cite_start]**Decision:** We will use a specialized, distributed Geospatial Data Store as the primary source of truth for all map-related data[cite: 36]. [cite_start]This system will be optimized with spatial partitioning and a graph data structure to enable fast queries and efficient pathfinding[cite: 37, 38].
+* **Consequences:**
+    * [cite_start]**Positive:** Ensures high performance for complex queries, supports horizontal scalability, and maintains data integrity[cite: 40, 41, 42].
+    * [cite_start]**Negative:** Increases complexity, requires specialized expertise, and may be more expensive than general-purpose databases[cite: 44, 46, 45].
+
+* **Farsi Version - ADR 1: استفاده از یک پایگاه داده مکانی-فضایی تخصصی برای نقشه‌کشی و مسیریابی مقیاس‌پذیر**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** یک سرویس مانند گوگل مپ حجم عظیمی از داده‌های مکانی-فضایی را مدیریت می‌کند و پایگاه‌های داده سنتی برای حجم و پیچیدگی پرس‌وجوهای تخصصی مانند جستجوهای نزدیکی و پیمایش گراف مناسب نیستند[cite: 33, 34].
+    * [cite_start]**تصمیم:** ما از یک پایگاه داده مکانی-فضایی توزیع‌شده و تخصصی به عنوان منبع اصلی برای تمام داده‌های مرتبط با نقشه استفاده خواهیم کرد[cite: 36]. [cite_start]این سیستم با پارتیشن‌بندی فضایی و ساختار داده‌ای گراف بهینه خواهد شد تا امکان پرس‌وجوهای سریع و یافتن مسیر کارآمد را فراهم کند[cite: 37, 38].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** عملکرد بالا برای پرس‌وجوهای پیچیده، پشتیبانی از مقیاس‌پذیری افقی و حفظ یکپارچگی داده‌ها را تضمین می‌کند[cite: 40, 41, 42].
+        * [cite_start]**منفی:** پیچیدگی را افزایش می‌دهد، نیاز به تخصص دارد و ممکن است گران‌تر از پایگاه‌های داده عمومی باشد[cite: 44, 46, 45].
+
+---
+
+#### ADR 2: Real-time Traffic Ingestion and Processing with Stream Analytics
+
+* **Status:** Proposed
+* [cite_start]**Context:** Providing accurate, real-time traffic information is crucial for an effective navigation service[cite: 54]. [cite_start]This requires processing a continuous, high-volume stream of data from diverse sources[cite: 55].
+* [cite_start]**Decision:** We will use a stream processing platform (e.g., Apache Flink) for ingesting, aggregating, and analyzing real-time traffic data[cite: 57]. [cite_start]Raw data will be ingested into message queues, processed by Stream Processing Workers for normalization and aggregation, and then stored in a time-series database and cache for quick access by the routing and mapping services[cite: 58, 62].
+* **Consequences:**
+    * [cite_start]**Positive:** Enables real-time accuracy and updates, handles high throughput, and is fault-tolerant[cite: 64, 65, 67].
+    * [cite_start]**Negative:** Involves high operational complexity and a small, inherent data latency, and is computationally and memory-intensive[cite: 68, 70, 68, 70].
+
+* **Farsi Version - ADR 2: دریافت و پردازش ترافیک در زمان واقعی با تحلیل جریان داده**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** ارائه اطلاعات دقیق و در زمان واقعی ترافیک برای یک سرویس مسیریابی مؤثر حیاتی است[cite: 54]. [cite_start]این امر نیازمند پردازش یک جریان پیوسته و با حجم بالای داده از منابع مختلف است[cite: 55].
+    * [cite_start]**تصمیم:** ما از یک پلتفرم پردازش جریان (مانند Apache Flink) برای دریافت، تجمیع و تحلیل داده‌های ترافیک در زمان واقعی استفاده خواهیم کرد[cite: 57]. [cite_start]داده‌های خام به صف‌های پیام وارد شده، توسط پردازشگران جریان برای استانداردسازی و تجمیع پردازش می‌شوند، و سپس برای دسترسی سریع توسط سرویس‌های مسیریابی و نقشه‌کشی در یک پایگاه داده سری زمانی و کش ذخیره خواهند شد[cite: 58, 62].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** دقت و به‌روزرسانی‌های در زمان واقعی را ممکن می‌سازد، توان عملیاتی بالا را مدیریت می‌کند و تحمل خطا دارد[cite: 64, 65, 67].
+        * [cite_start]**منفی:** شامل پیچیدگی عملیاتی بالایی است، تأخیر داده‌ای ذاتی و کوچکی دارد و از نظر محاسباتی و حافظه‌ای پرهزینه است[cite: 68, 70].
+
+---
+
+#### ADR 3: Hybrid Map Tile Generation and Delivery for Global Scale
+
+* **Status:** Proposed
+* [cite_start]**Context:** Google Maps must deliver a visually rich and low-latency experience globally[cite: 78]. The challenge is to efficiently generate, store, and serve map tiles for various zoom levels and styles.
+* [cite_start]**Decision:** We will use a hybrid strategy combining pre-rendered raster tiles with dynamic client-side vector rendering, all delivered via a global Content Delivery Network (CDN)[cite: 80]. [cite_start]Pre-rendered raster tiles will handle static base maps, while vector tiles will handle dynamic elements like traffic overlays[cite: 81, 83].
+* **Consequences:**
+    * [cite_start]**Positive:** Ensures global low latency, scalability via the CDN, and visual fidelity and flexibility through vector tiles[cite: 87, 88].
+    * [cite_start]**Negative:** Involves high storage costs for raster tiles, significant complexity in managing the hybrid pipeline, and client-side rendering can burden device resources[cite: 92, 94].
+
+* **Farsi Version - ADR 3: تولید و ارائه ترکیبی کاشی‌های نقشه برای مقیاس جهانی**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** گوگل مپ باید یک تجربه بصری غنی و با تأخیر پایین را به صورت جهانی ارائه دهد[cite: 78]. چالش اصلی، تولید، ذخیره‌سازی و ارائه کارآمد کاشی‌های نقشه برای سطوح زوم و سبک‌های مختلف است.
+    * [cite_start]**تصمیم:** ما از یک استراتژی ترکیبی برای تولید و ارائه کاشی‌های نقشه استفاده خواهیم کرد که شامل ترکیب کاشی‌های شطرنجی از پیش رندر شده با رندرینگ برداری پویای سمت کاربر است، که همگی از طریق یک شبکه تحویل محتوای جهانی (CDN) ارائه می‌شوند[cite: 80]. [cite_start]کاشی‌های شطرنجی از پیش رندر شده نقشه‌های پایه ایستا را مدیریت خواهند کرد، در حالی که کاشی‌های برداری عناصر پویا مانند لایه‌های ترافیک را کنترل خواهند کرد[cite: 81, 83].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** تأخیر پایین جهانی، مقیاس‌پذیری از طریق CDN و وفاداری بصری و انعطاف‌پذیری از طریق کاشی‌های برداری را تضمین می‌کند[cite: 87, 88].
+        * [cite_start]**منفی:** شامل هزینه‌های ذخیره‌سازی بالا برای کاشی‌های شطرنجی، پیچیدگی قابل توجه در مدیریت خط لوله ترکیبی و بارگذاری رندرینگ سمت کاربر بر روی منابع دستگاه است[cite: 92, 94].
+
+---
+
+#### ADR 4: Distributed, Multi-Modal Search Index for Places and POIs
+
+* **Status:** Proposed
+* [cite_start]**Context:** The search functionality is paramount for Google Maps, requiring the indexing of an enormous, constantly changing dataset of Places and Points of Interest (POIs)[cite: 102]. [cite_start]A single database cannot meet the scale, performance, and multi-modal query requirements[cite: 104].
+* [cite_start]**Decision:** We will build a distributed, multi-modal search index specifically optimized for places and POIs[cite: 105]. [cite_start]This index will be horizontally sharded, combining full-text and geospatial indexing capabilities within each shard[cite: 106, 108]. [cite_start]A hybrid indexing pipeline will be used to handle both static data and real-time updates[cite: 110].
+* **Consequences:**
+    * [cite_start]**Positive:** Delivers ultra-low latency and highly relevant search results, supports massive scalability, and is fault-tolerant[cite: 113, 114, 116].
+    * [cite_start]**Negative:** Building and maintaining this system is an extreme engineering challenge, it's resource-intensive, and presents data freshness challenges[cite: 118, 119].
+
+* **Farsi Version - ADR 4: فهرست جستجوی توزیع‌شده و چند حالته برای مکان‌ها و نقاط مورد علاقه**
+    * **وضعیت:** پیشنهادی
+    * [cite_start]**مقدمه:** عملکرد جستجو برای گوگل مپ حیاتی است و نیازمند نمایه‌سازی مجموعه داده‌ای عظیم و دائماً در حال تغییر از مکان‌ها و نقاط مورد علاقه (POIs) است[cite: 102]. [cite_start]یک پایگاه داده واحد نمی‌تواند الزامات مقیاس، عملکرد و جستجوی چند حالته را برآورده کند[cite: 104].
+    * [cite_start]**تصمیم:** ما یک فهرست جستجوی توزیع‌شده و چند حالته را به طور خاص برای مکان‌ها و نقاط مورد علاقه طراحی خواهیم کرد[cite: 105]. [cite_start]این فهرست به صورت افقی قطعه‌قطعه شده و قابلیت‌های جستجوی متنی کامل و مکانی-فضایی را در هر قطعه ترکیب خواهد کرد[cite: 106, 108]. [cite_start]یک خط لوله نمایه‌سازی ترکیبی برای مدیریت داده‌های ایستا و به‌روزرسانی‌های در زمان واقعی استفاده خواهد شد[cite: 110].
+    * **پیامدها:**
+        * [cite_start]**مثبت:** جستجو با تأخیر فوق‌العاده پایین و نتایج بسیار مرتبط را ارائه می‌دهد، از مقیاس‌پذیری عظیم پشتیبانی می‌کند و تحمل خطا دارد[cite: 113, 114, 116].
+        * [cite_start]**منفی:** ساخت و نگهداری چنین سیستمی یک چالش مهندسی بسیار بزرگ است، پرهزینه از نظر منابع است و چالش‌هایی در تازگی داده‌ها به همراه دارد[cite: 118, 119].
+
+---
+
+### Additional Architecture Decision Records (ADRs)
+
+To create a more robust and comprehensive design for a global mapping service like Google Maps, the following ADRs are proposed to cover **privacy**, **upgradability**, and **localization**.
+
+#### ADR 5: Data Privacy and Security by Design
+
+* **Status:** Proposed
+* **Context:** Google Maps handles vast amounts of sensitive user data, including real-time location, search history, home and work addresses, and photos. Protecting this data is not just a legal requirement but is fundamental to building user trust and preventing catastrophic data breaches. The current design mentions services handling data, but lacks a formal architectural decision on how to protect it.
+* **Decision:** We will adopt a **"Privacy by Design" (PbD)** and **"Security by Design"** approach throughout the system. This means we will:
+    * **Encrypt All Sensitive Data:** All sensitive data will be encrypted both in transit (using TLS/HTTPS for all API calls) and at rest (in our databases).
+    * **Implement Data Minimization:** We will only collect and store data that is absolutely necessary for the functioning of the business.
+    * **Use Access Control:** We will enforce the principle of least privilege, ensuring that services and personnel only have access to the specific data they need to perform their functions.
+    * **Anonymize Data for Analytics:** Data used for business intelligence and analytics will be stripped of personally identifiable information (PII) to protect user privacy.
+    * **Audit and Monitor:** We will implement robust logging and monitoring to detect and alert on suspicious data access or security events.
+* **Consequences:**
+    * **Positive:**
+        * **Legal and Regulatory Compliance:** The system will be designed to meet global data protection laws from the start.
+        * **Increased User Trust:** Proactive security measures build user confidence, which is vital for a service that handles payments and personal location data.
+        * **Reduced Risk:** The system's resilience to data breaches and internal misuse is significantly enhanced.
+    * **Negative:**
+        * **Engineering Overhead:** Implementing and maintaining encryption, access control, and auditing adds complexity and development time.
+        * **Performance Impact:** Encryption and decryption can introduce a small amount of latency, which must be managed.
+        * **Increased Costs:** Specialized security tools and infrastructure may increase operational costs.
+* **Alternatives Considered:**
+    * **Reactive Security:** Relying on security measures to be added later as a patch or an afterthought. This is a common but dangerous practice that often leads to vulnerabilities. **Rejected.**
+    * **Rely on Default Cloud Security:** Assuming that a cloud provider's default security is sufficient. While cloud providers offer great tools, they are not a substitute for a comprehensive, application-level security and privacy strategy. **Rejected.**
+
+* **Farsi Version - ADR 5: حریم خصوصی و امنیت داده‌ها از طریق طراحی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** گوگل مپ حجم عظیمی از داده‌های حساس کاربران، از جمله موقعیت مکانی در زمان واقعی، سابقه جستجو، آدرس خانه و محل کار، و تصاویر را مدیریت می‌کند. حفاظت از این داده‌ها نه تنها یک الزام قانونی است، بلکه برای ایجاد اعتماد کاربر و جلوگیری از نقض‌های فاجعه‌بار داده‌ها نیز اساسی است. طراحی فعلی به سرویس‌هایی که داده‌ها را مدیریت می‌کنند اشاره دارد، اما فاقد تصمیم معماری رسمی در مورد نحوه حفاظت از آن‌ها است.
+    * **تصمیم:** ما رویکرد **"حریم خصوصی از طریق طراحی" (PbD)** و **"امنیت از طریق طراحی"** را در سراسر سیستم اتخاذ خواهیم کرد. این به معنی این است که ما:
+        * **تمام داده‌های حساس را رمزنگاری کنیم:** تمام داده‌های حساس در حال انتقال (با استفاده از TLS/HTTPS برای تمام فراخوانی‌های API) و در حال سکون (در پایگاه‌های داده ما) رمزنگاری خواهند شد.
+        * **اصل به حداقل رساندن داده‌ها را پیاده‌سازی کنیم:** ما فقط داده‌هایی را جمع‌آوری و ذخیره خواهیم کرد که برای عملکرد کسب‌وکار کاملاً ضروری هستند.
+        * **از کنترل دسترسی استفاده کنیم:** ما اصل حداقل دسترسی را اجرا خواهیم کرد و اطمینان خواهیم داد که سرویس‌ها و کارکنان فقط به داده‌های خاصی که برای انجام وظایف خود نیاز دارند دسترسی داشته باشند.
+        * **داده‌ها را برای تحلیل‌ها ناشناس‌سازی کنیم:** داده‌های مورد استفاده برای هوش تجاری و تحلیل‌ها از اطلاعات قابل شناسایی شخصی (PII) جدا خواهند شد تا از حریم خصوصی کاربر محافظت شود.
+        * **حسابرسی و نظارت:** ما ثبت و نظارت قوی را برای شناسایی و هشدار در مورد دسترسی مشکوک به داده‌ها یا رویدادهای امنیتی پیاده‌سازی خواهیم کرد.
+    * **پیامدها:**
+        * **مثبت:**
+            * **انطباق قانونی و مقرراتی:** سیستم از ابتدا برای برآورده کردن قوانین جهانی حفاظت از داده‌ها طراحی خواهد شد.
+            * **افزایش اعتماد کاربر:** اقدامات امنیتی پیشگیرانه اعتماد کاربر را می‌سازد، که برای سرویسی که پرداخت‌ها و داده‌های مکان شخصی را مدیریت می‌کند حیاتی است.
+            * **کاهش ریسک:** مقاومت سیستم در برابر نقض داده‌ها و سوءاستفاده‌های داخلی به طور چشمگیری افزایش می‌یابد.
+        * **منفی:**
+            * **سربار مهندسی:** پیاده‌سازی و نگهداری رمزنگاری، کنترل دسترسی و حسابرسی پیچیدگی و زمان توسعه را اضافه می‌کند.
+            * **تأثیر بر عملکرد:** رمزنگاری و رمزگشایی می‌توانند مقدار کمی تأخیر ایجاد کنند، که باید مدیریت شود.
+            * **افزایش هزینه‌ها:** ابزارها و زیرساخت‌های امنیتی تخصصی ممکن است هزینه‌های عملیاتی را افزایش دهند.
+    * **جایگزین‌های بررسی شده:**
+        * **امنیت واکنشی:** اتکا به اقدامات امنیتی برای اضافه شدن در آینده به عنوان یک وصله یا فکری ثانویه. این یک عمل رایج اما خطرناک است که اغلب منجر به آسیب‌پذیری‌ها می‌شود. **رد شد.**
+        * **اتکا به امنیت پیش‌فرض ابری:** فرض اینکه امنیت پیش‌فرض یک ارائه‌دهنده ابری کافی است. در حالی که ارائه‌دهندگان ابری ابزارهای عالی ارائه می‌دهند، آن‌ها جایگزین یک استراتژی امنیتی و حریم خصوصی جامع در سطح برنامه نیستند. **رد شد.**
+
+#### ADR 6: Internationalization and Localization
+
+* **Status:** Proposed
+* **Context:** Google Maps is a global product used by billions of people in hundreds of countries. To effectively serve a global audience, the system must support multiple languages, regional formats (e.g., date, units of measurement), and cultural nuances in business categories. The current design does not address a formal strategy for **localization** and **internationalization**.
+* **Decision:** We will design the system with **internationalization as a core principle**. This involves:
+    * **Externalized Strings:** All user-facing text, from street names to UI labels, will be stored in external resource files for easy translation.
+    * **Client-driven Locale:** The client application will automatically detect the user's preferred language and regional settings and pass this information in all API requests.
+    * **Dedicated Formatting Service:** A central service will handle all currency and unit conversions (e.g., miles vs. kilometers), date/time formatting, and other locale-specific presentations.
+    * **Multi-language Data:** The Search and Place Details services will be designed to handle multi-language data for business names, reviews, and descriptions.
+* **Consequences:**
+    * **Positive:** Enables seamless expansion into new markets, improves the user experience for a global audience, and simplifies maintenance by decoupling content from code.
+    * **Negative:** Adds initial development and architectural complexity and requires a dedicated process for managing translations and regional data.
+* **Alternatives Considered:**
+    * **Hard-Coded Strings:** Embedding text directly in the code, which makes localization nearly impossible without extensive code changes. **Rejected.**
+    * **Minimal Localization:** Only translating key UI elements without supporting multi-language data for places and businesses. This would provide a poor user experience in non-English markets. **Rejected.**
+
+* **Farsi Version - ADR 6: بین‌المللی‌سازی و محلی‌سازی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** گوگل مپ یک محصول جهانی است که توسط میلیاردها نفر در صدها کشور استفاده می‌شود. برای خدمت‌رسانی مؤثر به مخاطبان جهانی، سیستم باید از چندین زبان، فرمت‌های منطقه‌ای (مانلاً تاریخ، واحدهای اندازه‌گیری) و تفاوت‌های فرهنگی در دسته‌بندی کسب‌وکارها پشتیبانی کند. طراحی فعلی یک استراتژی رسمی برای **محلی‌سازی** و **بین‌المللی‌سازی** را در نظر نگرفته است.
+    * **تصمیم:** ما سیستم را با **بین‌المللی‌سازی به عنوان یک اصل اصلی** طراحی خواهیم کرد. این شامل:
+        * **رشته‌های بیرونی:** تمام متن‌های قابل مشاهده برای کاربر، از نام خیابان‌ها تا برچسب‌های رابط کاربری، در فایل‌های منابع خارجی برای ترجمه آسان ذخیره خواهند شد.
+        * **لوکال کاربر محور:** برنامه مشتری به طور خودکار زبان و تنظیمات منطقه‌ای ترجیحی کاربر را تشخیص داده و این اطلاعات را در تمام درخواست‌های API ارسال می‌کند.
+        * **سرویس فرمت‌بندی اختصاصی:** یک سرویس مرکزی تمام تبدیل‌های ارز و واحد (مانند مایل در مقابل کیلومتر)، فرمت‌بندی تاریخ/زمان و سایر نمایش‌های مخصوص لوکال را مدیریت خواهد کرد.
+        * **داده‌های چندزبانه:** سرویس‌های جستجو و جزئیات مکان برای مدیریت داده‌های چندزبانه برای نام کسب‌وکارها، نظرات و توضیحات طراحی خواهند شد.
+    * **پیامدها:**
+        * **مثبت:** گسترش بی‌دردسر به بازارهای جدید را ممکن می‌سازد، تجربه کاربری را برای مخاطبان جهانی بهبود می‌بخشد و با جدا کردن محتوا از کد، نگهداری را ساده‌تر می‌کند.
+        * **منفی:** پیچیدگی اولیه در توسعه و معماری را اضافه می‌کند و نیازمند یک فرآیند اختصاصی برای مدیریت ترجمه‌ها و داده‌های منطقه‌ای است.
+    * **جایگزین‌های بررسی شده:**
+        * **رشته‌های کد سخت‌افزاری:** قرار دادن متن به طور مستقیم در کد، که محلی‌سازی را بدون تغییرات گسترده کد تقریباً غیرممکن می‌کند. **رد شد.**
+        * **محلی‌سازی حداقلی:** تنها ترجمه عناصر کلیدی رابط کاربری بدون پشتیبانی از داده‌های چندزبانه برای مکان‌ها و کسب‌وکارها. این کار تجربه کاربری ضعیفی در بازارهای غیرانگلیسی‌زبان فراهم می‌کند. **رد شد.**
+
+#### ADR 7: Gradual Rollout and Feature Flag Management
+
+* **Status:** Proposed
+* **Context:** A high-traffic, real-time system like Google Maps cannot afford service outages caused by faulty deployments. A "big-bang" release of new features is too risky and can disrupt service for millions of users. A strategy for **upgradability** that minimizes risk and enables continuous delivery is essential.
+* **Decision:** We will use **feature flags** and a **gradual rollout (canary deployment)** process for all new features and updates.
+    * **Feature Flags:** Every new feature will be controlled by a feature flag, allowing us to turn features on or off remotely without a code deployment. This acts as an instant kill switch for any issues.
+    * **Canary Deployment:** New versions of services will be deployed to a small subset of production servers and monitored closely. If the performance and error rates are acceptable, the new version will be gradually rolled out to all servers.
+    * **A/B Testing:** This approach also allows for robust A/B testing of new features to measure their impact on business metrics before a full release.
+* **Consequences:**
+    * **Positive:**
+        * **Reduced Risk:** The risk of a widespread outage due to a bad deployment is significantly lowered.
+        * **Faster Development Cycles:** Developers can deploy more frequently and with greater confidence.
+        * **Improved Quality:** Issues can be caught and contained with a small user base, preventing a poor experience for everyone.
+    * **Negative:**
+        * **Increased Complexity:** The feature flag system adds a new layer of infrastructure and management complexity.
+        * **Debugging:** Debugging issues that only occur for a small "canary" group can be more challenging.
+* **Alternatives Considered:**
+    * **Big-Bang Deployment:** Deploying a new version to all production servers at once. This is the simplest approach but poses an unacceptable risk for a live system. **Rejected.**
+    * **Blue-Green Deployment:** While safer than big-bang, this method still deploys the new version to a full environment and then switches traffic over. It lacks the granularity of gradual rollouts and the instant rollback capability of feature flags.
+
+* **Farsi Version - ADR 7: انتشار تدریجی و مدیریت فلگ‌های ویژگی**
+    * **وضعیت:** پیشنهادی
+    * **مقدمه:** یک سیستم در زمان واقعی با ترافیک بالا مانند گوگل مپ نمی‌تواند قطعی سرویس ناشی از استقرار‌های معیوب را تحمل کند. انتشار "انفجاری" ویژگی‌های جدید بسیار خطرناک است و می‌تواند سرویس را برای میلیون‌ها کاربر مختل کند. یک استراتژی برای **قابلیت به‌روزرسانی** که ریسک را به حداقل می‌رساند و امکان تحویل مداوم را فراهم می‌کند، ضروری است.
+    * **تصمیم:** ما از **فلگ‌های ویژگی** و فرآیند **انتشار تدریجی (canary deployment)** برای تمام ویژگی‌ها و به‌روزرسانی‌های جدید استفاده خواهیم کرد.
+        * **فلگ‌های ویژگی:** هر ویژگی جدید توسط یک فلگ ویژگی کنترل خواهد شد، که به ما اجازه می‌دهد ویژگی‌ها را از راه دور و بدون نیاز به استقرار کد، روشن یا خاموش کنیم. این به عنوان یک سوئیچ قطع فوری برای هر مشکلی عمل می‌کند.
+        * **استقرار قناری:** نسخه‌های جدید سرویس‌ها به زیرمجموعه کوچکی از سرورهای تولیدی مستقر شده و از نزدیک نظارت خواهند شد. اگر عملکرد و نرخ خطا قابل قبول باشد، نسخه جدید به تدریج به تمام سرورها منتشر خواهد شد.
+        * **تست A/B:** این رویکرد همچنین امکان تست A/B قوی ویژگی‌های جدید را برای اندازه‌گیری تأثیر آن‌ها بر معیارهای کسب‌وکار قبل از انتشار کامل فراهم می‌کند.
+    * **پیامدها:**
+        * **مثبت:**
+            * **کاهش ریسک:** خطر یک قطعی گسترده به دلیل یک استقرار بد به طور چشمگیری کاهش می‌یابد.
+            * **چرخه‌های توسعه سریع‌تر:** توسعه‌دهندگان می‌توانند با دفعات بیشتر و با اطمینان بیشتری استقرار انجام دهند.
+            * **کیفیت بهبودیافته:** مشکلات می‌توانند با یک پایگاه کاربری کوچک شناسایی و مهار شوند و از تجربه کاربری بد برای همه جلوگیری شود.
+        * **منفی:**
+            * **افزایش پیچیدگی:** سیستم فلگ ویژگی یک لایه جدید از زیرساخت و پیچیدگی مدیریتی را اضافه می‌کند.
+            * **اشکال‌زدایی:** اشکال‌زدایی مشکلاتی که فقط برای یک گروه "قناری" کوچک رخ می‌دهند، می‌تواند چالش‌برانگیزتر باشد.
+    * **جایگزین‌های بررسی شده:**
+        * **استقرار انفجاری:** استقرار یک نسخه جدید به طور همزمان بر روی تمام سرورهای تولیدی. این ساده‌ترین رویکرد است اما ریسک غیرقابل قبولی برای یک سیستم زنده ایجاد می‌کند. **رد شد.**
+        * **استقرار آبی-سبز:** اگرچه از استقرار انفجاری امن‌تر است، اما این روش همچنان نسخه جدید را به یک محیط کامل استقرار می‌دهد و سپس ترافیک را به آن منتقل می‌کند. فاقد دانه‌بندی انتشار تدریجی و قابلیت بازگشت فوری فلگ‌های ویژگی است.
