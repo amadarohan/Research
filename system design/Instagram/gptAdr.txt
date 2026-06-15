@@ -1,0 +1,370 @@
+ADR-001
+معماری Hybrid Feed Generation
+
+Title: ADR-001: استفاده از Hybrid Feed Generation (Fan-out on Write + Fan-out on Read)
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+بیش از ۸۰٪ ترافیک Instagram مربوط به مشاهده Feed است.
+
+استفاده از Push کامل:
+
+برای کاربران مشهور (Celebrity)
+میلیون‌ها Follower
+
+باعث ایجاد Write Storm می‌شود.
+
+استفاده از Pull کامل نیز Latency بسیار بالایی در زمان مشاهده Feed ایجاد می‌کند.
+
+Decision
+
+سیستم از Hybrid Fan-out استفاده خواهد کرد:
+
+کاربران عادی → Fan-out On Write
+کاربران Celebrity → Fan-out On Read
+
+آستانه اولیه:
+
+کمتر از 10K Follower → Push
+بیشتر از 10K Follower → Pull
+Consequences
+Positive
+Feed سریع برای اکثر کاربران
+جلوگیری از انفجار عملیات نوشتن
+Scalability بسیار بهتر
+هزینه زیرساخت کمتر
+Negative / Trade-offs
+پیچیدگی بیشتر Feed Service
+نیاز به Merge چند منبع داده
+Debugging سخت‌تر
+Alternatives Considered
+
+Alternative 1: Fan-out On Write Only
+
+رد شد زیرا برای Celebrityها مقیاس‌پذیر نیست.
+
+Alternative 2: Fan-out On Read Only
+
+رد شد زیرا Latency Feed را افزایش می‌دهد.
+
+Compliance
+Load Testing
+Feed SLA Monitoring
+Related Decisions
+
+ADR-002
+ADR-004
+
+ADR-002
+ذخیره‌سازی Social Graph
+
+Title: ADR-002: استفاده از Graph-Oriented Social Relationship Store
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+Instagram میلیاردها رابطه Follow دارد.
+
+کوئری‌های پرتکرار:
+
+Who follows me?
+Who do I follow?
+Mutual Connections
+Suggested Friends
+
+در RDBMS سنتی Joinهای بسیار سنگین ایجاد می‌شود.
+
+Decision
+
+Social Graph در Storage اختصاصی گرافی نگهداری شود.
+
+مانند:
+
+TAO-like Graph Store
+Neo4j-like Architecture
+
+User Service مالک کامل Graph خواهد بود.
+
+Consequences
+Positive
+Latency بسیار پایین
+توسعه Recommendation آسان‌تر
+Extensibility بهتر
+Negative / Trade-offs
+پیچیدگی بیشتر زیرساخت
+نیاز به Replication تخصصی
+Alternatives Considered
+
+Alternative 1: Relational Database
+
+رد شد به دلیل هزینه بالای Traversal.
+
+Alternative 2: Shared User Table
+
+رد شد زیرا Scalability مناسبی ندارد.
+
+Compliance
+Graph Query Benchmark
+Cache Hit Rate Monitoring
+Related Decisions
+
+ADR-004
+ADR-005
+
+ADR-003
+Media Pipeline مبتنی بر Event
+
+Title: ADR-003: استفاده از Event Driven Media Processing Pipeline
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+هر فایل آپلود شده باید:
+
+Validate شود
+Resize شود
+Thumbnail ساخته شود
+Video Transcode شود
+CDN Publish شود
+
+انجام همه مراحل به صورت Sync باعث افزایش شدید Response Time می‌شود.
+
+Decision
+
+پس از Upload:
+
+MediaUploaded Event منتشر شود.
+
+Pipeline شامل:
+
+Validation Worker
+Image Processor
+Video Processor
+Thumbnail Generator
+CDN Publisher
+
+باشد.
+
+Consequences
+Positive
+Scalability بالا
+Fault Isolation
+Extensibility مناسب
+Negative / Trade-offs
+Eventual Consistency
+نیاز به Monitoring پیشرفته
+Alternatives Considered
+
+Alternative 1: Synchronous Processing
+
+رد شد زیرا Latency زیادی ایجاد می‌کند.
+
+Alternative 2: Monolithic Media Service
+
+رد شد زیرا Bottleneck ایجاد می‌کند.
+
+Compliance
+DLQ Monitoring
+Event Versioning
+Related Decisions
+
+ADR-001
+ADR-006
+
+ADR-004
+Privacy-by-Design
+
+Title: ADR-004: مدل Privacy-First برای کاربران و محتوا
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+Instagram دارای داده‌های حساس زیر است:
+
+Direct Messages
+Location Metadata
+User Activity
+Media Metadata
+
+همچنین برخی حساب‌ها Private هستند.
+
+Decision
+
+Privacy در هسته معماری لحاظ شود:
+
+Fine-Grained ACL
+Encryption At Rest
+Encryption In Transit
+Private Account Visibility Rules
+Data Minimization
+Audit Logging
+Consequences
+Positive
+افزایش اعتماد کاربران
+انطباق با GDPR
+کاهش ریسک نشت اطلاعات
+Negative / Trade-offs
+پیچیدگی بیشتر سیستم
+افزایش هزینه ذخیره‌سازی
+Alternatives Considered
+
+Alternative 1: Network Security Only
+
+رد شد زیرا دسترسی داخلی را کنترل نمی‌کند.
+
+Alternative 2: Encryption Only
+
+رد شد زیرا مدل مجوزدهی را پوشش نمی‌دهد.
+
+Compliance
+Security Audit
+Penetration Testing
+Related Decisions
+
+ADR-002
+ADR-005
+
+ADR-005
+Localization و Multi-Region
+
+Title: ADR-005: معماری Multi-Region و Localization
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+Instagram کاربران جهانی دارد.
+
+نیازمندی‌ها:
+
+زبان محلی
+منطقه زمانی
+قوانین محلی
+Data Residency
+
+Decision
+
+سیستم به صورت Active-Active Multi Region پیاده‌سازی شود.
+
+Localization شامل:
+
+Language Packs
+Locale Specific Ranking
+Timezone Awareness
+Regional Compliance Rules
+
+باشد.
+
+Consequences
+Positive
+Availability بالا
+Latency کمتر
+تجربه کاربری بهتر
+Negative / Trade-offs
+Replication Complexity
+هزینه عملیاتی بیشتر
+Alternatives Considered
+
+Alternative 1: Single Region
+
+رد شد به دلیل Latency جهانی.
+
+Alternative 2: Active Passive
+
+رد شد به دلیل Failover کند.
+
+Compliance
+DR Test
+Regional Compliance Audit
+Related Decisions
+
+ADR-004
+
+ADR-006
+Achievability و Evolutionary Architecture
+
+Title: ADR-006: توسعه تدریجی معماری Instagram
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پیاده‌سازی کامل Instagram در فاز اول پروژه غیرواقعی است.
+
+پیاده‌سازی همزمان:
+
+Feed
+Recommendation
+Realtime Notification
+Stories
+Explore
+
+ریسک بالایی دارد.
+
+Decision
+
+پیاده‌سازی در چهار فاز انجام شود:
+
+Phase 1
+User
+Post
+Follow
+Feed
+Phase 2
+Media Pipeline
+CDN
+Notification
+Phase 3
+Stories
+Search
+Phase 4
+Recommendation
+Explore
+ML Ranking
+Consequences
+Positive
+Achievability بالا
+کاهش ریسک
+Time To Market سریع‌تر
+Negative / Trade-offs
+نیاز به Migration
+بازطراحی برخی سرویس‌ها در آینده
+Alternatives Considered
+
+Alternative 1: Big Bang Delivery
+
+رد شد زیرا ریسک بسیار بالایی دارد.
+
+Alternative 2: Monolith Forever
+
+رد شد زیرا پاسخگوی رشد سیستم نیست.
+
+Compliance
+Architecture Review
+Phase Exit Criteria
+
+برای Instagram اگر بخواهم C4 را در سطح Enterprise طراحی کنم، چهار نمودار اصلی که باید تولید شوند عبارت‌اند از:
+
+System Context Diagram
+Container Diagram
+Component Diagram (Feed Service + Social Graph)
+Dynamic Diagram (Upload → Feed Fanout → Notification Flow)
+
+این‌ها مهم‌ترین نمودارهایی هستند که واقعاً معماری Instagram را نشان می‌دهند و برخلاف Amazon، تمرکز اصلی‌شان روی Feed Generation و Social Graph است.
