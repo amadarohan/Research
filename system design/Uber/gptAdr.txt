@@ -1,0 +1,198 @@
+🧩 ADR 1: معماری کلی سیستم Ride-Hailing (Uber-like Platform)
+
+Title: ADR #1: انتخاب معماری میکروسرویس برای پلتفرم درخواست سفر
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+سیستم باید میلیون‌ها درخواست سفر همزمان را در سطح جهانی مدیریت کند. نیاز به جداسازی مسئولیت‌ها بین سرویس‌هایی مانند درخواست سفر، موقعیت‌یابی راننده، تطبیق (Matching)، قیمت‌گذاری و پرداخت وجود دارد.
+
+چالش اصلی:
+
+latency پایین (<2s)
+مقیاس‌پذیری جهانی
+قابلیت توسعه سریع ویژگی‌های جدید
+پایداری در شرایط بار زیاد
+Decision
+
+ما از معماری Microservices Event-Driven استفاده می‌کنیم. هر domain به یک سرویس مستقل تبدیل می‌شود (Trip Service, Driver Service, Location Service, Pricing Service).
+
+Consequences
+
+• Positive:
+
+افزایش scalability از طریق horizontal scaling
+افزایش extensibility (افزودن سرویس جدید بدون تغییر core)
+ایزوله شدن failure (fault isolation)
+بهبود localization (هر region می‌تواند deployment مستقل داشته باشد)
+
+• Negative / Trade-offs:
+
+پیچیدگی DevOps بالا
+نیاز به observability پیشرفته
+latency ناشی از inter-service communication
+Alternatives Considered
+
+• Monolith: رد شد به دلیل عدم scalability و محدودیت توسعه
+• Modular Monolith: مناسب MVP ولی ناکافی برای scale جهانی
+
+Compliance
+استفاده از API Gateway
+استاندارد logging و tracing (OpenTelemetry)
+contract testing بین سرویس‌ها
+Related Decisions
+ADR #2 (Matching Engine)
+ADR #3 (Location System)
+📊 C4 Diagram (System Context)
+🧩 ADR 2: طراحی سیستم Matching (Dispatch Engine)
+
+Title: ADR #2: انتخاب الگوریتم Geo-Spatial Matching با H3 Indexing
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+سیستم باید نزدیک‌ترین راننده را در کمتر از 2 ثانیه پیدا کند. GPS stream ها بسیار زیاد هستند (~1M updates/sec).
+
+نیازها:
+
+latency پایین
+کاهش search space
+دقت بالا در ETA
+پایداری در شهرهای بزرگ
+Decision
+
+استفاده از H3 Geospatial Index + Candidate Filtering + ETA Ranking
+
+تقسیم زمین به hex grid
+نگهداری راننده‌ها در سلول‌های H3
+انتخاب top-K candidates
+rank based on ETA + driver score
+Consequences
+
+• Positive:
+
+scalability بالا در city-level load
+بهبود localization (هر region مستقل partition می‌شود)
+کاهش latency search
+extensibility برای اضافه کردن logic (surge, priority riders)
+
+• Negative / Trade-offs:
+
+پیچیدگی محاسبه H3 resolution
+نیاز به tuning مداوم
+inconsistency لحظه‌ای در location data
+Alternatives Considered
+
+• Geohash: رد شد به دلیل imbalance در مناطق شهری
+• Full DB scan: غیرممکن در scale بالا
+
+Compliance
+privacy: anonymized driver location storage
+rate limiting روی location updates
+encryption in transit
+Related Decisions
+ADR #1
+ADR #3
+📊 C4 Diagram (Container – Matching System)
+🧩 ADR 3: مدیریت Location Streaming در Real-Time
+
+Title: ADR #3: استفاده از Event Streaming برای موقعیت‌یابی رانندگان
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+رانندگان هر 2–5 ثانیه GPS ارسال می‌کنند. سیستم باید:
+
+real-time باشد
+loss tolerant باشد
+قابل مقیاس جهانی باشد
+مصرف انرژی موبایل کم باشد
+Decision
+
+استفاده از Kafka + Streaming Pipeline (Flink-like processing) برای ingestion و پردازش location data.
+
+Consequences
+
+• Positive:
+
+scalability بالا (millions events/sec)
+extensibility برای analytics و fraud detection
+localization با partition per region
+durability بالا
+
+• Negative / Trade-offs:
+
+eventual consistency در location
+پیچیدگی pipeline
+نیاز به monitoring قوی
+Privacy Considerations
+location hashing در سطح storage
+retention policy کوتاه‌مدت (TTL)
+عدم ذخیره مسیر کامل بدون نیاز
+Alternatives Considered
+
+• Direct DB write: rejected (bottleneck)
+• WebSocket only: insufficient durability
+
+Compliance
+GDPR-style deletion support
+audit logs for location access
+Related Decisions
+ADR #2
+ADR #4
+📊 C4 Diagram (Container – Location Streaming)
+🧩 ADR 4: Pricing + Surge Engine
+
+Title: ADR #4: طراحی Surge Pricing مبتنی بر Real-Time Demand-Supply Model
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+سیستم باید قیمت را بر اساس:
+
+تعداد راننده‌ها
+تعداد درخواست‌ها
+منطقه جغرافیایی
+زمان
+
+در لحظه تغییر دهد.
+
+Decision
+
+استفاده از stream-based aggregation + demand/supply ratio model
+
+هر 30–60 ثانیه aggregation
+compute surge multiplier per H3 cell
+push to pricing cache
+Consequences
+
+• Positive:
+
+scalability بالا در city-wide pricing
+extensibility برای ML-based pricing
+localization دقیق per region
+response سریع به تغییر تقاضا
+
+• Negative / Trade-offs:
+
+احتمال نوسان قیمت (price flickering)
+پیچیدگی explainability برای کاربران
+نیاز به anti-manipulation logic
+Privacy
+عدم استفاده از data شخصی برای pricing
+فقط aggregate metrics
+Alternatives Considered
+
+• Static pricing: rejected
+• Fully ML black-box pricing: rejected (lack of explainability)
+
+Compliance
+audit pricing changes
+fairness constraints monitoring
+Related Decisions
+ADR #2 (H3 grid)
+ADR #3 (streaming)
