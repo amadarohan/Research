@@ -1,0 +1,278 @@
+ADR-001: معماری Distributed Inverted Index
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+موتور جستجو باید میلیاردها سند را ایندکس کند.
+
+ذخیره کل Index در یک Node باعث:
+
+محدودیت حافظه
+محدودیت IOPS
+عدم تحمل خطا
+
+خواهد شد.
+
+Decision
+
+ایندکس به صورت Sharded Distributed Inverted Index نگهداری شود.
+
+هر Shard:
+
+Primary Replica
+Secondary Replica
+
+خواهد داشت.
+
+Query Router مسئول مسیریابی Query به Shardهای مربوطه است.
+
+Consequences
+Positive
+Scalability افقی
+Fault Tolerance
+افزایش ظرفیت ایندکس
+Negative / Trade-offs
+افزایش Network Overhead
+پیچیدگی Rebalancing
+نیاز به Replica Synchronization
+Alternatives Considered
+Alternative 1: Single Large Index
+
+رد شد زیرا مقیاس‌پذیر نیست.
+
+Alternative 2: Shared Database Search
+
+رد شد زیرا Latency بالایی ایجاد می‌کند.
+
+Compliance
+Shard Health Monitoring
+Replication Verification
+Related Decisions
+
+ADR-002
+ADR-005
+
+ADR-002: Event-Driven Indexing Pipeline
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+Crawlerها روزانه میلیون‌ها صفحه را جمع‌آوری می‌کنند.
+
+ایندکس‌سازی Sync باعث Bottleneck می‌شود.
+
+Decision
+
+Pipeline ایندکس‌سازی مبتنی بر Event طراحی شود.
+
+مراحل:
+
+Crawl
+Parse
+Extract
+Rank Signals
+Index
+
+از طریق Event Bus منتقل شوند.
+
+Consequences
+Positive
+Extensibility بالا
+پردازش مستقل مراحل
+Fault Isolation
+Negative / Trade-offs
+Eventual Consistency
+Monitoring پیچیده‌تر
+Alternatives Considered
+Alternative 1: Monolithic Indexer
+
+رد شد زیرا Bottleneck ایجاد می‌کند.
+
+Alternative 2: Scheduled Batch Indexing
+
+رد شد زیرا Freshness نتایج کاهش می‌یابد.
+
+Compliance
+DLQ Monitoring
+Event Versioning
+Related Decisions
+
+ADR-001
+ADR-004
+
+ADR-003: Privacy-Preserving Search Analytics
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+موتور جستجو اطلاعات حساسی مانند:
+
+Search History
+Click History
+User Profile Signals
+Location
+
+را جمع‌آوری می‌کند.
+
+Decision
+
+Analytics بر اساس Privacy-by-Design پیاده‌سازی شود.
+
+شامل:
+
+Pseudonymization
+Data Minimization
+Encryption At Rest
+Encryption In Transit
+Retention Policy
+Consequences
+Positive
+انطباق با GDPR
+افزایش اعتماد کاربران
+کاهش ریسک نشت اطلاعات
+Negative / Trade-offs
+محدودیت در تحلیل داده
+افزایش پیچیدگی معماری
+Alternatives Considered
+Alternative 1: Full User Tracking
+
+رد شد به دلیل ریسک‌های Privacy.
+
+Alternative 2: Encryption Only
+
+رد شد زیرا Data Governance را پوشش نمی‌دهد.
+
+Compliance
+Privacy Audit
+Retention Enforcement
+Related Decisions
+
+ADR-005
+
+ADR-004: Localization & Multi-Language Search
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+کاربران در زبان‌های مختلف جستجو می‌کنند.
+
+الگوریتم‌های:
+
+Tokenization
+Stemming
+Synonym Expansion
+
+برای زبان‌ها متفاوت هستند.
+
+Decision
+
+Language-Aware Search Pipeline ایجاد شود.
+
+برای هر Locale:
+
+Dictionary
+Stemmer
+Ranking Signals
+
+مستقل نگهداری شود.
+
+Consequences
+Positive
+کیفیت جستجوی بهتر
+تجربه کاربری محلی
+پشتیبانی از زبان‌های جدید
+Negative / Trade-offs
+افزایش حجم Index
+نگهداری پیچیده‌تر
+Alternatives Considered
+Alternative 1: English-Only Pipeline
+
+رد شد زیرا جهانی نیست.
+
+Alternative 2: Machine Translation Before Search
+
+رد شد زیرا دقت نتایج کاهش می‌یابد.
+
+Compliance
+Localization Testing
+Search Quality Metrics
+Related Decisions
+
+ADR-002
+
+ADR-005: Evolutionary Architecture برای Achievability
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پیاده‌سازی موتور جستجوی کامل مشابه Google در یک فاز امکان‌پذیر نیست.
+
+ویژگی‌های پیشرفته:
+
+Learning To Rank
+Semantic Search
+Personalization
+Knowledge Graph
+
+پیچیدگی بسیار بالایی دارند.
+
+Decision
+
+پیاده‌سازی در فازهای زیر انجام شود:
+
+Phase 1
+Crawling
+Indexing
+Keyword Search
+Phase 2
+Ranking
+Caching
+Replication
+Phase 3
+Autocomplete
+Spell Correction
+Analytics
+Phase 4
+Semantic Search
+Personalization
+Knowledge Graph
+Consequences
+Positive
+Achievability بالا
+کاهش ریسک پروژه
+Time-To-Market سریع
+Negative / Trade-offs
+Migration تدریجی
+Refactoring در فازهای بعدی
+Alternatives Considered
+Alternative 1: Big Bang Delivery
+
+رد شد زیرا ریسک بسیار بالا دارد.
+
+Alternative 2: Monolithic Search Engine
+
+رد شد زیرا پاسخگوی رشد سیستم نیست.
+
+Compliance
+Architecture Review Board
+Phase Exit Criteria
+Related Decisions
+
+ADR-001
+ADR-002
+ADR-004
