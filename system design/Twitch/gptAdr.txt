@@ -1,0 +1,149 @@
+🎥 ADR 1: معماری اصلی Streaming و Video Delivery Pipeline
+Status: Proposed
+Date: 2026-06-15
+Context
+
+سیستم Twitch نیاز دارد ویدیوهای live را با latency پایین به میلیون‌ها کاربر همزمان در سراسر دنیا deliver کند. چالش اصلی، balancing بین کیفیت (Quality) و latency است.
+
+Decision
+
+ما از معماری زیر استفاده می‌کنیم:
+
+Ingestion با RTMP/WebRTC (برای streamerها)
+Transcoding pipeline چند کیفیتی (360p تا 4K)
+Packaging به HLS / Low-Latency HLS (LL-HLS)
+Distribution از طریق CDN edge nodes جهانی
+Consequences
+Positive:
+Scalability بسیار بالا (horizontal scaling در CDN)
+Localization بهتر با edge نزدیک به کاربر
+Extensibility برای اضافه کردن codecهای جدید (مثل AV1)
+Achievability بالا با استفاده از CDNهای موجود
+Negative / Trade-offs:
+هزینه شدید bandwidth
+complexity در sync کردن stream segments
+latency tradeoff در ABR (adaptive bitrate)
+Privacy
+stream metadata anonymized در edge logs
+عدم ذخیره IP raw در analytics layer
+Compliance
+DRM integration برای content protection
+geo-restriction support در CDN layer
+Related Decisions
+ADR-2 (Chat System)
+ADR-3 (Ingestion Layer)
+💬 ADR 2: طراحی سیستم Chat Real-time
+Status: Proposed
+Date: 2026-06-15
+Context
+
+چت یکی از critical featureهای Twitch است. باید real-time، massively concurrent و مقاوم در برابر spam باشد.
+
+Decision
+
+ما از:
+
+WebSocket-based gateway
+Pub/Sub system (Kafka or Redis Streams)
+Channel-based sharding برای chat rooms
+Rate limiting + moderation layer
+
+استفاده می‌کنیم.
+
+Consequences
+Positive:
+latency بسیار پایین (<100ms)
+scalability بالا برای chat rooms بزرگ (millions users)
+extensibility برای emote system و bot integration
+localization برای language-based moderation
+Negative / Trade-offs:
+پیچیدگی state management
+نیاز به anti-spam system پیشرفته
+Privacy
+پیام‌ها encrypted in transit
+امکان حذف کامل history (GDPR delete request)
+Achievability
+استفاده از WebSocket infra موجود قابل پیاده‌سازی است
+moderation نیاز به ML layer دارد (medium complexity)
+Compliance
+real-time moderation filters
+logging برای abuse detection
+Related Decisions
+ADR-1 (Streaming)
+ADR-4 (Recommendation system)
+📡 ADR 3: سیستم Ingestion و Transcoding Pipeline
+Status: Proposed
+Date: 2026-06-15
+Context
+
+streamerها از networkهای مختلف stream ارسال می‌کنند و باید این streamها به کیفیت‌های مختلف تبدیل شوند.
+
+Decision
+
+ما از pipeline زیر استفاده می‌کنیم:
+
+RTMP/WebRTC ingest nodes
+Queue-based processing (Kafka)
+FFmpeg-based transcoding clusters
+Multi-bitrate output generation
+Storage in origin servers
+Consequences
+Positive:
+scalability افقی برای encoding jobs
+extensibility برای codec جدید
+localization با region-based ingest nodes
+Negative:
+هزینه compute بالا
+delay در encoding (pipeline latency)
+Privacy
+حذف metadata حساس streamer در pipeline
+isolation بین tenant streams
+Achievability
+استفاده از FFmpeg + Kubernetes feasible است
+نیاز به autoscaling شدید در peak hours
+Compliance
+watermarking برای copyright protection
+stream validation layer
+Related Decisions
+ADR-1 (Delivery)
+ADR-2 (Chat)
+🧠 ADR 4: سیستم Recommendation و Discovery (Home Feed)
+Status: Proposed
+Date: 2026-06-15
+Context
+
+کاربران باید streamهای مرتبط، محبوب و شخصی‌سازی‌شده را مشاهده کنند. این سیستم باید real-time و highly adaptive باشد.
+
+Decision
+
+استفاده از:
+
+Event streaming (user behavior tracking)
+Feature store (watch time, clicks, follows)
+Hybrid recommendation model:
+Collaborative filtering
+Trending-based ranking
+Language + region filters
+Online inference service
+Consequences
+Positive:
+personalization بالا
+extensibility برای ML model جدید
+localization قوی (language + region aware)
+scalability با feature sharding
+Negative:
+پیچیدگی ML pipeline
+نیاز به داده زیاد برای cold start
+هزینه inference بالا
+Privacy
+anonymization of user behavior events
+opt-out tracking mode
+Achievability
+قابل پیاده‌سازی با Kafka + feature store + model serving
+نیاز به ML ops maturity
+Compliance
+explainability layer برای recommendation
+user control over personalization
+Related Decisions
+ADR-2 (Chat engagement signals)
+ADR-1 (Streaming consumption data)
