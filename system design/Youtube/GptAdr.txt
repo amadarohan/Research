@@ -1,0 +1,367 @@
+ADR-001: معماری Event-Driven Video Processing Pipeline
+
+Title: ADR-001: استفاده از معماری Event-Driven برای پردازش ویدئو
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پس از آپلود یک ویدئو، مراحل متعددی باید انجام شود:
+
+اعتبارسنجی فایل
+استخراج Metadata
+تولید Thumbnail
+Transcoding در رزولوشن‌های مختلف
+تولید Subtitle
+انتشار محتوا
+
+انجام این مراحل به صورت Synchronous باعث افزایش شدید Latency و کاهش Throughput می‌شود.
+
+Decision
+
+سیستم از Event-Driven Architecture استفاده خواهد کرد.
+
+پس از Upload:
+
+VideoUploaded Event
+
+منتشر شده و سرویس‌های مستقل مراحل زیر را اجرا می‌کنند:
+
+Validation Service
+Metadata Service
+Thumbnail Service
+Transcoding Service
+Subtitle Service
+Publishing Service
+Consequences
+Positive
+Scalability مستقل هر مرحله
+Fault Isolation
+Extensibility بالا
+امکان افزودن پردازش‌های جدید بدون تغییر Pipeline
+Negative / Trade-offs
+Eventual Consistency
+نیاز به Monitoring پیشرفته
+Debugging دشوارتر
+Alternatives Considered
+Alternative 1: Synchronous Processing
+
+رد شد زیرا Latency بسیار بالایی ایجاد می‌کند.
+
+Alternative 2: Monolithic Media Processor
+
+رد شد زیرا Bottleneck ایجاد می‌کند.
+
+Compliance
+Event Schema Registry
+DLQ Monitoring
+Distributed Tracing
+Related Decisions
+
+ADR-002
+ADR-006
+
+ADR-002: Distributed Object Storage و Multi-Tier Content Delivery
+
+Title: ADR-002: استفاده از Distributed Object Storage و Multi-Tier CDN
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+YouTube میلیاردها فایل ویدئویی ذخیره می‌کند.
+
+دسترسی مستقیم کاربران به Storage مرکزی باعث:
+
+Latency بالا
+هزینه Bandwidth زیاد
+کاهش Availability
+
+خواهد شد.
+
+Decision
+
+ویدئوها در Distributed Object Storage ذخیره شوند.
+
+معماری توزیع محتوا شامل:
+
+Origin Storage
+Regional Cache
+Edge Cache
+CDN Layer
+
+باشد.
+
+Consequences
+Positive
+Scalability بسیار بالا
+Latency پایین
+Availability بالا
+کاهش فشار روی Storage اصلی
+Negative / Trade-offs
+پیچیدگی Cache Invalidation
+هزینه Replication
+هزینه CDN
+Alternatives Considered
+Alternative 1: Centralized Storage Delivery
+
+رد شد زیرا مقیاس‌پذیر نیست.
+
+Alternative 2: Single CDN Provider
+
+رد شد زیرا Vendor Lock-In ایجاد می‌کند.
+
+Compliance
+Cache Hit Ratio Monitoring
+Replication Audit
+Related Decisions
+
+ADR-005
+
+ADR-003: Recommendation Platform به عنوان سرویس مستقل
+
+Title: ADR-003: جداسازی Recommendation Engine از Core Platform
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+بخش عمده مصرف محتوا در YouTube از طریق Recommendation انجام می‌شود.
+
+وابسته کردن Recommendation به سرویس اصلی Video باعث Coupling شدید و دشواری توسعه الگوریتم‌های ML می‌شود.
+
+Decision
+
+Recommendation Platform به صورت سرویس مستقل طراحی شود.
+
+شامل:
+
+User Behavior Collector
+Feature Store
+Candidate Generator
+Ranking Engine
+ML Model Serving
+
+باشد.
+
+Consequences
+Positive
+Extensibility بالا
+توسعه مستقل مدل‌های ML
+امکان A/B Testing
+مقیاس‌پذیری مستقل
+Negative / Trade-offs
+افزایش پیچیدگی داده
+نیاز به Data Pipeline پیشرفته
+هزینه زیرساخت بیشتر
+Alternatives Considered
+Alternative 1: Recommendation داخل Video Service
+
+رد شد زیرا Coupling زیادی ایجاد می‌کند.
+
+Alternative 2: Batch Recommendation Only
+
+رد شد زیرا Personalization ضعیفی دارد.
+
+Compliance
+Model Monitoring
+Feature Governance
+A/B Testing Framework
+Related Decisions
+
+ADR-004
+ADR-005
+
+ADR-004: Privacy-by-Design و Content Governance
+
+Title: ADR-004: پیاده‌سازی Privacy-by-Design و مدیریت مالکیت محتوا
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+سیستم اطلاعات حساسی مانند:
+
+Watch History
+Search History
+User Preferences
+Comments
+Viewing Analytics
+
+را ذخیره می‌کند.
+
+همچنین قوانین مالکیت معنوی باید رعایت شوند.
+
+Decision
+
+Privacy و Copyright در معماری سیستم تعبیه شوند.
+
+شامل:
+
+Encryption At Rest
+Encryption In Transit
+Data Minimization
+Fine-Grained Authorization
+Audit Logging
+Content Fingerprinting
+Copyright Claim Workflow
+Consequences
+Positive
+افزایش اعتماد کاربران
+انطباق با GDPR و قوانین مشابه
+کاهش ریسک حقوقی
+Negative / Trade-offs
+افزایش پیچیدگی سیستم
+افزایش هزینه ذخیره‌سازی و پردازش
+Alternatives Considered
+Alternative 1: Encryption Only
+
+رد شد زیرا Governance را پوشش نمی‌دهد.
+
+Alternative 2: Manual Copyright Review
+
+رد شد زیرا در مقیاس YouTube عملی نیست.
+
+Compliance
+Privacy Audit
+Security Assessment
+Copyright Compliance Review
+Related Decisions
+
+ADR-003
+ADR-005
+
+ADR-005: معماری Multi-Region و Localization
+
+Title: ADR-005: پشتیبانی از Multi-Region Deployment و Localization
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+YouTube کاربران جهانی دارد.
+
+کاربران نیازمند:
+
+زبان محلی
+قوانین محلی
+تبلیغات محلی
+محدودیت‌های منطقه‌ای
+
+هستند.
+
+Decision
+
+سیستم به صورت Active-Active Multi-Region طراحی شود.
+
+Localization شامل:
+
+Language Packs
+Regional Recommendation Policies
+Local Advertising Rules
+Geo Restriction Policies
+
+باشد.
+
+Consequences
+Positive
+کاهش Latency
+Availability بالا
+تجربه کاربری بهتر
+رعایت قوانین محلی
+Negative / Trade-offs
+پیچیدگی Replication
+Data Residency Challenges
+هزینه زیرساخت بیشتر
+Alternatives Considered
+Alternative 1: Single Region Deployment
+
+رد شد زیرا Latency جهانی بالایی دارد.
+
+Alternative 2: Active-Passive Architecture
+
+رد شد زیرا Failover کندتری دارد.
+
+Compliance
+Disaster Recovery Testing
+Regional Compliance Audit
+Related Decisions
+
+ADR-002
+ADR-004
+
+ADR-006: Evolutionary Architecture برای Achievability
+
+Title: ADR-006: توسعه تدریجی معماری برای کاهش ریسک پیاده‌سازی
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پیاده‌سازی کامل YouTube از روز اول شامل:
+
+Streaming
+Recommendation
+Search
+Analytics
+Moderation
+
+ریسک و هزینه بسیار بالایی دارد.
+
+Decision
+
+معماری در چهار فاز توسعه یابد.
+
+Phase 1
+User Management
+Video Upload
+Video Playback
+Phase 2
+Transcoding Pipeline
+CDN Integration
+Search
+Phase 3
+Recommendation
+Analytics
+Notifications
+Phase 4
+Content Moderation
+ML Personalization
+Multi Region Deployment
+Consequences
+Positive
+Achievability بالا
+کاهش ریسک پروژه
+Time-To-Market سریع‌تر
+Negative / Trade-offs
+Migration تدریجی
+Refactoring در فازهای بعدی
+Alternatives Considered
+Alternative 1: Big Bang Delivery
+
+رد شد زیرا ریسک بسیار بالایی دارد.
+
+Alternative 2: Monolithic Forever
+
+رد شد زیرا پاسخگوی رشد سیستم نیست.
+
+Compliance
+Architecture Review Board
+Phase Exit Criteria
+Related Decisions
+
+ADR-001
+ADR-003
+ADR-005
