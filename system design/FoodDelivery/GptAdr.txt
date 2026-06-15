@@ -1,0 +1,357 @@
+ADR-001: مدیریت سفارش با Saga Pattern
+
+Title: ADR-001: استفاده از Saga Pattern برای مدیریت چرخه سفارش
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+ثبت سفارش شامل چندین سرویس مستقل است:
+
+Order Service
+Restaurant Service
+Payment Service
+Courier Service
+
+استفاده از Distributed Transaction باعث:
+
+Coupling شدید
+Latency بالا
+کاهش Availability
+
+می‌شود.
+
+Decision
+
+فرآیند سفارش بر اساس Saga Pattern پیاده‌سازی شود.
+
+مراحل:
+
+Create Order
+Reserve Restaurant Capacity
+Process Payment
+Assign Courier
+Confirm Order
+
+در صورت شکست هر مرحله، عملیات جبرانی اجرا شود.
+
+Consequences
+Positive
+Scalability بالا
+Fault Isolation
+مناسب برای Microservices
+Negative / Trade-offs
+Eventual Consistency
+مدیریت پیچیده‌تر خطاها
+نیاز به Monitoring پیشرفته
+Alternatives Considered
+Alternative 1: Distributed Transaction (2PC)
+
+رد شد زیرا مقیاس‌پذیر نیست.
+
+Alternative 2: Synchronous Chaining
+
+رد شد زیرا Availability را کاهش می‌دهد.
+
+Compliance
+Saga Monitoring
+Compensation Validation
+Related Decisions
+
+ADR-002
+ADR-004
+
+ADR-002: Dispatch Engine مستقل برای تخصیص پیک
+
+Title: ADR-002: جداسازی Dispatch Engine برای مدیریت تخصیص پیک
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+تخصیص سفارش به پیک مهم‌ترین قابلیت سیستم است.
+
+معیارها:
+
+فاصله پیک تا رستوران
+ترافیک
+ظرفیت فعلی پیک
+ETA
+اولویت سفارش
+
+قرار دادن این منطق در Order Service باعث افزایش Coupling و دشواری توسعه می‌شود.
+
+Decision
+
+Dispatch Engine به عنوان سرویس مستقل طراحی شود.
+
+وظایف:
+
+Courier Discovery
+ETA Calculation
+Assignment Optimization
+Reassignment Logic
+Consequences
+Positive
+Extensibility بالا
+توسعه الگوریتم‌های جدید
+مقیاس‌پذیری مستقل
+Negative / Trade-offs
+پیچیدگی بیشتر معماری
+نیاز به Real-Time Data Pipeline
+Alternatives Considered
+Alternative 1: Assignment داخل Order Service
+
+رد شد زیرا قابلیت توسعه را محدود می‌کند.
+
+Alternative 2: Manual Dispatch
+
+رد شد زیرا در مقیاس بالا قابل استفاده نیست.
+
+Compliance
+Dispatch SLA Monitoring
+Assignment Success Rate
+Related Decisions
+
+ADR-003
+ADR-006
+
+ADR-003: Real-Time Location Tracking Architecture
+
+Title: ADR-003: استفاده از Real-Time Location Tracking مبتنی بر Event Streaming
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+کاربران باید موقعیت پیک را به صورت لحظه‌ای مشاهده کنند.
+
+ارسال اطلاعات مکان از طریق Polling سنتی:
+
+مصرف پهنای باند زیاد
+Latency بالا
+تجربه کاربری ضعیف
+
+ایجاد می‌کند.
+
+Decision
+
+سیستم از Event Streaming استفاده کند.
+
+فناوری‌های پیشنهادی:
+
+WebSocket
+Server Sent Events
+Kafka / Pulsar
+
+Location Eventها در Topicهای مجزا منتشر شوند.
+
+Consequences
+Positive
+Latency پایین
+تجربه کاربری بهتر
+مقیاس‌پذیری بالا
+Negative / Trade-offs
+مدیریت Connectionها دشوارتر
+هزینه زیرساخت بیشتر
+Alternatives Considered
+Alternative 1: Polling
+
+رد شد زیرا کارایی مناسبی ندارد.
+
+Alternative 2: Database Polling
+
+رد شد زیرا فشار زیادی بر دیتابیس وارد می‌کند.
+
+Compliance
+Location Accuracy Monitoring
+WebSocket Health Checks
+Related Decisions
+
+ADR-002
+
+ADR-004: Privacy-by-Design برای داده‌های مکانی کاربران
+
+Title: ADR-004: حفاظت از داده‌های مکانی و اطلاعات شخصی کاربران
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+سیستم اطلاعات حساسی نگهداری می‌کند:
+
+آدرس منزل
+موقعیت مکانی لحظه‌ای
+تاریخچه سفارش
+اطلاعات پرداخت
+
+نشت این اطلاعات ریسک بالایی ایجاد می‌کند.
+
+Decision
+
+Privacy-by-Design در معماری اعمال شود.
+
+شامل:
+
+Encryption At Rest
+Encryption In Transit
+Tokenization
+Data Retention Policies
+Fine-Grained Access Control
+Audit Logging
+Consequences
+Positive
+افزایش اعتماد کاربران
+انطباق قانونی
+کاهش ریسک نشت داده
+Negative / Trade-offs
+هزینه عملیاتی بیشتر
+پیچیدگی توسعه
+Alternatives Considered
+Alternative 1: Encryption Only
+
+رد شد زیرا کنترل دسترسی را پوشش نمی‌دهد.
+
+Alternative 2: Network Security Only
+
+رد شد زیرا تهدیدات داخلی را کنترل نمی‌کند.
+
+Compliance
+Privacy Audit
+Security Assessment
+Related Decisions
+
+ADR-005
+
+ADR-005: Localization و Multi-City Architecture
+
+Title: ADR-005: پشتیبانی از Multi-City Deployment و Localization
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+سیستم در شهرها و کشورهای مختلف فعالیت خواهد کرد.
+
+نیازمندی‌ها:
+
+زبان محلی
+ارز محلی
+مالیات محلی
+قوانین محلی
+ساعات کاری متفاوت
+Decision
+
+تمام قوانین کسب‌وکار به صورت Configurable نگهداری شوند.
+
+Localization شامل:
+
+Language Packs
+Currency Rules
+Tax Rules
+Regional Policies
+
+باشد.
+
+Consequences
+Positive
+توسعه سریع به شهرهای جدید
+کاهش هزینه توسعه
+تجربه کاربری بهتر
+Negative / Trade-offs
+پیچیدگی Configuration Management
+افزایش نیاز به Governance
+Alternatives Considered
+Alternative 1: Hard-Coded Business Rules
+
+رد شد زیرا قابلیت توسعه ندارد.
+
+Alternative 2: Country-Specific Deployments
+
+رد شد زیرا هزینه زیادی ایجاد می‌کند.
+
+Compliance
+Localization Testing
+Regional Policy Validation
+Related Decisions
+
+ADR-004
+ADR-006
+
+ADR-006: Evolutionary Architecture برای Achievability
+
+Title: ADR-006: توسعه تدریجی معماری Food Delivery
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پیاده‌سازی کامل سیستم مشابه Uber Eats یا DoorDash از ابتدا عملی نیست.
+
+قابلیت‌هایی مانند:
+
+Dynamic Pricing
+Dispatch Optimization
+Recommendation
+Fraud Detection
+
+پیچیدگی بسیار بالایی دارند.
+
+Decision
+
+سیستم در فازهای زیر توسعه یابد.
+
+Phase 1
+User
+Restaurant
+Order
+Payment
+Phase 2
+Courier Management
+Dispatch Engine
+Real-Time Tracking
+Phase 3
+Promotions
+Recommendation
+Notifications
+Phase 4
+Dynamic Pricing
+Fraud Detection
+Multi Region
+Consequences
+Positive
+Achievability بالا
+کاهش ریسک پروژه
+Time-To-Market سریع‌تر
+Negative / Trade-offs
+Migration تدریجی
+Refactoring در مراحل بعدی
+Alternatives Considered
+Alternative 1: Big Bang Delivery
+
+رد شد زیرا ریسک بسیار بالایی دارد.
+
+Alternative 2: Monolithic Forever
+
+رد شد زیرا پاسخگوی رشد سیستم نیست.
+
+Compliance
+Architecture Review Board
+Phase Exit Criteria
+Related Decisions
+
+ADR-001
+ADR-002
+ADR-005
