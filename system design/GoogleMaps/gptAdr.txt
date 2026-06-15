@@ -1,0 +1,311 @@
+باشه، کاملاً می‌تونیم این رو به شکل حرفه‌ای مثل یک Design Review واقعی جلو ببریم.
+
+من برای هر سیستم (مثل Google Maps) حداقل ۴ ADR کامل + تحلیل‌های مدنظر (privacy، achievability، localization، extensibility، scalability) + در انتها C4 Diagram (به صورت قابل رندر Mermaid که اگر خواستی بعداً تبدیل به تصویر واقعی هم می‌کنیم) تولید می‌کنم.
+
+> نکته مهم: چون الان فقط “دیزاین اول” (Google Maps) رو فرستادی، شروع می‌کنم به طراحی ADRها برای همین سیستم.
+
+---
+
+# 🧭 ADR 1: معماری پایه سیستم Google Maps
+
+### Status: Proposed
+
+### Date: 2026-06-15
+
+---
+
+## Context
+
+سیستم Google Maps نیاز به ارائه سرویس نقشه، مسیریابی، جستجوی مکان‌ها و نمایش real-time traffic دارد. چالش اصلی، مقیاس‌پذیری بسیار بالا، latency پایین و پردازش داده‌های جغرافیایی در سطح جهانی است.
+
+---
+
+## Decision
+
+ما از معماری **Microservices + Geo-distributed architecture** استفاده می‌کنیم.
+
+* Map Tile Service برای ارائه کاشی‌های نقشه
+* Routing Service برای محاسبه مسیر
+* Location Indexing Service برای جستجوی مکان‌ها
+* Traffic Streaming Service برای داده‌های لحظه‌ای
+
+---
+
+## Consequences
+
+### Positive:
+
+* مقیاس‌پذیری جهانی (Scalability بالا)
+* امکان توسعه مستقل سرویس‌ها (Extensibility بالا)
+* کاهش latency با edge caching
+* بهبود localization با region-based deployment
+
+### Negative / Trade-offs:
+
+* پیچیدگی شدید در orchestration
+* هزینه بالا برای زیرساخت geo-distributed
+* سخت‌تر شدن debugging end-to-end flows
+
+---
+
+## Alternatives Considered
+
+* Monolithic architecture → رد شد به دلیل عدم scalability
+* Modular monolith → رد شد چون برای traffic جهانی کافی نیست
+
+---
+
+## Compliance
+
+* استفاده از API Gateway برای کنترل
+* logging مرکزی برای تمام سرویس‌ها
+* rate limiting در edge layer
+
+---
+
+## Related Decisions
+
+* ADR-2 (Geo Indexing Strategy)
+* ADR-3 (Caching Strategy)
+
+---
+
+## 🌐 C4 Diagram (Context Level)
+
+```mermaid
+graph TD
+User --> MapsSystem
+MapsSystem --> ExternalTrafficData
+MapsSystem --> LocationProviders
+MapsSystem --> MapDataStorage
+```
+
+---
+
+# 📍 ADR 2: سیستم Geo Indexing و جستجوی مکانی
+
+### Status: Proposed
+
+### Date: 2026-06-15
+
+---
+
+## Context
+
+جستجوی مکان‌ها (restaurants, streets, POIs) نیاز به indexing بسیار سریع و دقیق دارد. حجم داده‌ها در مقیاس جهانی بسیار بزرگ است.
+
+---
+
+## Decision
+
+استفاده از **Geohash + Inverted Index + Distributed Search Cluster**
+
+* داده‌ها با Geohash partition می‌شوند
+* Elastic-like inverted index برای POIها
+* shard-based search cluster
+
+---
+
+## Consequences
+
+### Positive:
+
+* سرعت بالای search (low latency)
+* localization دقیق (support برای زبان‌ها و مناطق)
+* extensibility برای داده‌های جدید (POI types)
+
+### Negative:
+
+* پیچیدگی در rebalancing shardها
+* هزینه نگهداری indexها
+
+---
+
+## Alternatives Considered
+
+* Pure SQL spatial queries → رد شد (slow at scale)
+* Single global index → رد شد (bottleneck شدید)
+
+---
+
+## Compliance
+
+* encryption در ذخیره‌سازی location data (privacy)
+* anonymization برای user queries
+
+---
+
+## Related Decisions
+
+* ADR-1 (Architecture)
+* ADR-4 (Privacy model)
+
+---
+
+## 🌐 C4 Diagram (Container Level)
+
+```mermaid
+graph TD
+User --> SearchAPI
+SearchAPI --> GeoHashService
+SearchAPI --> SearchCluster
+SearchCluster --> POIDataStore
+```
+
+---
+
+# 🚗 ADR 3: سیستم مسیریابی (Routing Engine)
+
+### Status: Proposed
+
+### Date: 2026-06-15
+
+---
+
+## Context
+
+محاسبه مسیر بهینه بین دو نقطه با در نظر گرفتن traffic، distance و constraints نیازمند الگوریتم‌های گراف سنگین است.
+
+---
+
+## Decision
+
+استفاده از:
+
+* Graph-based routing (Dijkstra + A*)
+* Precomputed road graph
+* Traffic-weighted edges (real-time updates)
+
+---
+
+## Consequences
+
+### Positive:
+
+* مسیرهای سریع‌تر و هوشمندتر
+* قابلیت real-time adaptation
+* extensibility برای modeهای مختلف (driving, walking, biking)
+
+### Negative:
+
+* مصرف زیاد memory برای graph
+* پیچیدگی آپدیت real-time weights
+
+---
+
+## Alternatives Considered
+
+* BFS ساده → رد شد (inefficient)
+* Fully dynamic routing → رد شد (too expensive)
+
+---
+
+## Compliance
+
+* caching مسیرهای پرتکرار
+* audit trail برای تغییرات routing
+
+---
+
+## Related Decisions
+
+* ADR-1 (Architecture)
+* ADR-5 (Traffic Streaming)
+
+---
+
+## 🌐 C4 Diagram (Component Level)
+
+```mermaid
+graph TD
+User --> RoutingAPI
+RoutingAPI --> GraphEngine
+GraphEngine --> RoadGraphDB
+GraphEngine --> TrafficService
+```
+
+---
+
+# 🔐 ADR 4: Privacy و Localization Model
+
+### Status: Proposed
+
+### Date: 2026-06-15
+
+---
+
+## Context
+
+سیستم Google Maps داده‌های حساس location user را پردازش می‌کند. باید privacy در سطح بالا رعایت شود.
+
+---
+
+## Decision
+
+* استفاده از **data anonymization**
+* عدم ذخیره مستقیم location history بدون consent
+* استفاده از regional data residency
+* localization کامل UI/UX و data format
+
+---
+
+## Consequences
+
+### Positive:
+
+* افزایش اعتماد کاربران (privacy compliance)
+* سازگاری با قوانین GDPR / local laws
+* بهتر شدن localization تجربه کاربر
+
+### Negative / Trade-offs:
+
+* محدودیت در personalization
+* پیچیدگی در data pipeline
+* latency اضافه برای anonymization layer
+
+---
+
+## Alternatives Considered
+
+* ذخیره کامل location history → رد شد (privacy risk)
+* عدم anonymization → رد شد (legal risk)
+
+---
+
+## Compliance
+
+* GDPR compliance layer
+* user consent manager
+* encryption at rest + in transit
+
+---
+
+## Related Decisions
+
+* ADR-2 (Geo indexing)
+* ADR-1 (Architecture)
+
+---
+
+## 🌐 C4 Diagram (Context Security View)
+
+```mermaid
+graph TD
+User --> ConsentService
+User --> MapsSystem
+MapsSystem --> EncryptedLocationStore
+MapsSystem --> AnonymizationLayer
+```
+
+---
+
+# اگر بخوای قدم بعدی
+
+می‌تونم برای همین Google Maps:
+
+* ADRها رو به سطح FAANG review واقعی ارتقا بدم (خیلی سخت‌گیرانه‌تر)
+* یا C4 Diagramها رو به **تصویر واقعی (PNG)** تبدیل کنم
+* یا حتی کل system design رو به صورت end-to-end design doc حرفه‌ای بنویسم
+* یا ADRها رو با **trade-off matrix واقعی (latency/cost/accuracy)** کامل کنم
+
+فقط بگو مرحله بعدی چی باشه.
