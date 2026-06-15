@@ -1,0 +1,218 @@
+ADR 1: انتخاب معماری میکروسرویس برای Zoom Backend
+
+Title: ADR 1: Adoption of Microservices Architecture for Backend Systems
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+سیستم Zoom باید میلیاردها event همزمان (call, chat, signaling, recording) را مدیریت کند. یک monolith در این مقیاس باعث bottleneck، سختی در توسعه و محدودیت scalability می‌شود. نیاز داریم تیم‌ها مستقل توسعه دهند و سیستم قابلیت رشد افقی داشته باشد.
+
+Decision
+
+ما از معماری Microservices برای backend استفاده می‌کنیم، به‌طوری که سرویس‌ها شامل:
+
+signaling service
+user service
+meeting service
+recording service
+notification service
+باشند.
+Consequences
+
+Positive:
+
+افزایش scalability افقی
+استقلال تیم‌ها (extensibility بالا)
+deployment مستقل سرویس‌ها
+بهبود fault isolation
+
+Negative / Trade-offs:
+
+افزایش پیچیدگی distributed systems
+latency بین سرویس‌ها
+نیاز به observability پیشرفته
+هزینه بیشتر زیرساخت
+Privacy
+
+تفکیک سرویس‌ها اجازه کنترل دقیق‌تر روی داده‌های حساس کاربران (chat/video metadata) را می‌دهد.
+
+Achievability
+
+نیازمند API gateway + service mesh (مثل Envoy) و CI/CD بالغ است.
+
+Localization
+
+امکان deploy منطقه‌ای (EU/US/ASIA) برای compliance داده‌ها.
+
+Scalability
+
+هر سرویس مستقل scale می‌شود (مثلاً signaling در peak load).
+
+Extensibility
+
+اضافه کردن feature مثل breakout rooms بدون تغییر core system.
+
+Alternatives Considered
+Monolith: رد شد به دلیل عدم scalability
+Modular Monolith: رد شد چون در long-term محدودیت دارد
+
+ADR 2: استفاده از SFU به جای MCU برای Video Routing
+
+Title: ADR 2: SFU-Based Media Routing Architecture
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+در تماس‌های ویدیویی گروهی، ارسال مستقیم video stream بین همه کاربران (mesh) یا پردازش مرکزی (MCU) هزینه و latency بالایی دارد.
+
+Decision
+
+ما از SFU (Selective Forwarding Unit) برای routing ویدیو استفاده می‌کنیم که streamها را بدون decode کامل forward می‌کند.
+
+Consequences
+
+Positive:
+
+کاهش latency
+کاهش مصرف CPU server
+مقیاس‌پذیری بهتر در جلسات بزرگ
+بهبود تجربه کاربر در شبکه ضعیف
+
+Negative / Trade-offs:
+
+پیچیدگی در مدیریت streamها
+نیاز به adaptive bitrate پیچیده
+debugging سخت‌تر
+Privacy
+
+SFU داده را decode نمی‌کند → کاهش سطح exposure داده‌های ویدیویی.
+
+Achievability
+
+نیاز به WebRTC optimization و infrastructure نزدیک به edge.
+
+Localization
+
+SFU باید region-based deploy شود برای کاهش RTT.
+
+Scalability
+
+هر SFU node می‌تواند تعداد زیادی stream forward کند.
+
+Extensibility
+
+امکان اضافه کردن features مثل live transcription بدون تغییر media path.
+
+Alternatives Considered
+MCU: رد شد به دلیل CPU bottleneck
+Full Mesh: رد شد به دلیل O(n²) complexity
+
+ADR 3: استفاده از WebRTC برای Real-Time Communication
+
+Title: ADR 3: WebRTC as Core Real-Time Communication Protocol
+Status: Accepted
+Date: 2026-06-15
+
+Context
+
+برای ارتباط real-time در browser و client apps نیاز به پروتکل استاندارد با latency پایین داریم.
+
+Decision
+
+ما از WebRTC برای audio/video/data channel communication استفاده می‌کنیم.
+
+Consequences
+
+Positive:
+
+latency بسیار پایین
+پشتیبانی native در مرورگرها
+encryption پیش‌فرض (DTLS/SRTP)
+کاهش نیاز به custom protocol
+
+Negative / Trade-offs:
+
+NAT traversal پیچیده (STUN/TURN dependency)
+inconsistent behavior بین browsers
+debugging سخت در production
+Privacy
+
+WebRTC encryption end-to-end transport-level encryption فراهم می‌کند.
+
+Achievability
+
+نیازمند TURN servers در مقیاس جهانی.
+
+Localization
+
+TURN/STUN servers باید نزدیک به کاربران deploy شوند.
+
+Scalability
+
+connection establishment distributed ولی signaling centralized.
+
+Extensibility
+
+امکان افزودن data channels برای chat و collaboration tools.
+
+Alternatives Considered
+Custom UDP protocol: رد شد به دلیل complexity
+RTMP: رد شد به دلیل latency بالا
+
+ADR 4: طراحی Multi-Region Active-Active برای Scalability و Localization
+
+Title: ADR 4: Active-Active Multi-Region Deployment Strategy
+Status: Proposed
+
+Context
+
+Zoom باید در سطح جهانی latency پایین و availability بالا داشته باشد. single-region deployment باعث افزایش latency و ریسک outage می‌شود.
+
+Decision
+
+ما معماری active-active multi-region را پیاده‌سازی می‌کنیم که شامل:
+
+چند region فعال همزمان
+geo-routing کاربران به نزدیک‌ترین region
+replication داده‌های non-real-time
+Consequences
+
+Positive:
+
+کاهش latency جهانی
+افزایش availability
+resilience در برابر region failure
+compliance بهتر (data residency)
+
+Negative / Trade-offs:
+
+پیچیدگی شدید consistency
+هزینه زیرساخت بالا
+نیاز به conflict resolution
+پیچیدگی debugging distributed state
+Privacy
+
+امکان نگه‌داری داده کاربران در region مشخص (GDPR compliance).
+
+Achievability
+
+نیازمند global load balancer و replication pipeline.
+
+Localization
+
+routing بر اساس کشور/region کاربر.
+
+Scalability
+
+افزایش capacity با اضافه کردن region جدید.
+
+Extensibility
+
+اضافه کردن region جدید بدون تغییر core system.
+
+Alternatives Considered
+Single region + CDN: رد شد به دلیل latency بالا
+Active-passive: رد شد به دلیل failover delay
+
