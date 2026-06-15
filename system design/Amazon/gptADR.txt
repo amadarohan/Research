@@ -1,0 +1,363 @@
+ADR-001
+معماری Microservice Domain Driven
+
+Title: ADR-001: استفاده از معماری Domain-Oriented Microservices
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پلتفرم تجارت الکترونیک مشابه آمازون شامل دامنه‌های مختلفی مانند:
+
+Catalog
+Search
+Inventory
+Order
+Payment
+Recommendation
+User
+
+است.
+
+در صورت استفاده از Monolith یا Serviceهای درشت‌دانه، توسعه مستقل تیم‌ها، مقیاس‌پذیری و استقرار مستقل با مشکل مواجه خواهد شد.
+
+Decision
+
+سیستم بر اساس معماری Domain Driven Microservices طراحی خواهد شد.
+
+هر دامنه مالک:
+
+Database اختصاصی
+API اختصاصی
+Deployment مستقل
+
+خواهد بود.
+
+Consequences
+Positive
+مقیاس‌پذیری مستقل سرویس‌ها
+استقرار مستقل
+توسعه موازی تیم‌ها
+Fault Isolation
+امکان توسعه قابلیت‌های جدید
+Negative / Trade-offs
+افزایش پیچیدگی عملیاتی
+نیاز به Service Discovery
+نیاز به Distributed Tracing
+مدیریت سخت‌تر تراکنش‌ها
+Alternatives Considered
+Alternative 1: Modular Monolith
+
+رد شد زیرا در مقیاس Amazon به گلوگاه توسعه تبدیل می‌شود.
+
+Alternative 2: SOA
+
+رد شد زیرا Coupling بیشتری نسبت به Microservice ایجاد می‌کند.
+
+Compliance
+Database per Service Rule
+Architecture Review Board
+Related Decisions
+ADR-002
+ADR-004
+ADR-002
+مدیریت موجودی با Reservation Pattern و Saga
+
+Title: ADR-002: استفاده از Reservation Pattern برای Inventory
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+در فروشگاه‌های بزرگ، هزاران درخواست همزمان برای خرید یک کالا ثبت می‌شود.
+
+استفاده از Distributed Lock باعث:
+
+افزایش Latency
+کاهش Throughput
+پیچیدگی عملیاتی
+
+می‌شود.
+
+Decision
+
+سیستم از Reservation Pattern همراه با Saga استفاده خواهد کرد.
+
+فرآیند:
+
+Reserve Inventory
+Create Order
+Process Payment
+Confirm Inventory
+
+در صورت شکست:
+
+Compensating Transaction اجرا خواهد شد.
+
+Consequences
+Positive
+جلوگیری از Overselling
+حذف Distributed Lock
+مقیاس‌پذیری بالا
+مناسب برای معماری Event Driven
+Negative / Trade-offs
+Eventual Consistency
+مدیریت پیچیده‌تر خطاها
+نیاز به Saga Orchestration
+Alternatives Considered
+Alternative 1: Distributed Lock
+
+رد شد زیرا Bottleneck ایجاد می‌کند.
+
+Alternative 2: Synchronous Transaction
+
+رد شد زیرا بین سرویس‌ها قابل پیاده‌سازی نیست.
+
+Compliance
+Contract Testing
+Saga Monitoring
+Related Decisions
+ADR-001
+ADR-003
+ADR-003
+معماری Event Driven برای Scalability و Extensibility
+
+Title: ADR-003: استفاده از Event Driven Architecture
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+سرویس‌های:
+
+Inventory
+Search
+Recommendation
+Analytics
+Notification
+
+نباید وابستگی مستقیم به Order Service داشته باشند.
+
+در غیر این صورت Coupling افزایش یافته و توسعه قابلیت‌های جدید دشوار می‌شود.
+
+Decision
+
+تمام رویدادهای تجاری از طریق Event Bus منتشر شوند.
+
+نمونه:
+
+OrderCreated
+OrderPaid
+OrderCancelled
+ProductUpdated
+Consequences
+Positive
+Extensibility بالا
+افزودن سرویس جدید بدون تغییر سرویس‌های موجود
+کاهش Coupling
+Scalability بهتر
+Negative / Trade-offs
+Eventual Consistency
+Debugging سخت‌تر
+نیاز به Event Versioning
+Alternatives Considered
+Alternative 1: REST Chaining
+
+رد شد زیرا Coupling زیادی ایجاد می‌کند.
+
+Alternative 2: Shared Database
+
+رد شد زیرا استقلال سرویس‌ها را از بین می‌برد.
+
+Compliance
+Event Schema Registry
+Versioned Events
+Related Decisions
+ADR-001
+ADR-002
+ADR-004
+معماری Multi Region و Localization
+
+Title: ADR-004: پشتیبانی از Multi-Region و Localization
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+Amazon در کشورهای مختلف فعالیت می‌کند.
+
+کاربران نیاز دارند:
+
+زبان محلی
+ارز محلی
+مالیات محلی
+قوانین محلی
+
+را مشاهده کنند.
+
+همچنین Availability بالا مورد نیاز است.
+
+Decision
+
+سیستم به صورت Active-Active Multi Region طراحی شود.
+
+قابلیت Localization شامل:
+
+Language
+Currency
+Tax Rules
+Product Availability
+
+در لایه Business Service مدیریت شود.
+
+Consequences
+Positive
+Availability بالا
+Disaster Recovery بهتر
+تجربه کاربری محلی
+کاهش Latency جهانی
+Negative / Trade-offs
+پیچیدگی Replication
+مدیریت Data Residency
+هزینه زیرساخت بیشتر
+Alternatives Considered
+Alternative 1: Single Region
+
+رد شد زیرا Availability کافی ندارد.
+
+Alternative 2: Active-Passive
+
+رد شد زیرا Failover کندتر است.
+
+Compliance
+Regional Data Governance
+DR Testing
+Related Decisions
+ADR-005
+ADR-005
+حفاظت از حریم خصوصی کاربران
+
+Title: ADR-005: Privacy-by-Design برای داده‌های کاربران
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پلتفرم اطلاعات حساسی مانند:
+
+آدرس
+شماره تماس
+تاریخچه خرید
+اطلاعات پرداخت
+
+را نگهداری می‌کند.
+
+Decision
+
+Privacy به صورت Built-in پیاده‌سازی شود:
+
+Encryption At Rest
+Encryption In Transit
+Tokenization
+Data Minimization
+Role Based Access Control
+Audit Log
+Consequences
+Positive
+انطباق با GDPR
+کاهش ریسک نشت اطلاعات
+افزایش اعتماد کاربران
+Negative / Trade-offs
+هزینه بیشتر
+افزایش پیچیدگی توسعه
+Alternatives Considered
+Alternative 1: Encryption Only
+
+رد شد زیرا کنترل دسترسی را پوشش نمی‌دهد.
+
+Alternative 2: Network Security Only
+
+رد شد زیرا تهدیدات داخلی را پوشش نمی‌دهد.
+
+Compliance
+Security Review
+Periodic Audit
+Related Decisions
+ADR-001
+ADR-006
+Achievability و تکامل تدریجی معماری
+
+Title: ADR-006: Evolutionary Architecture برای قابلیت پیاده‌سازی
+
+Status: Proposed
+
+Date: 2026-06-15
+
+Context
+
+پیاده‌سازی کامل معماری Amazon از روز اول عملی نیست.
+
+ریسک:
+
+هزینه زیاد
+زمان توسعه بالا
+پیچیدگی بیش از حد
+Decision
+
+معماری در سه فاز اجرا شود:
+
+Phase 1
+Catalog
+Order
+Payment
+Phase 2
+Search
+Cache
+Notification
+Phase 3
+Recommendation
+Analytics
+Multi Region
+Consequences
+Positive
+Achievability بالا
+کاهش ریسک پروژه
+Time-To-Market سریع‌تر
+Negative / Trade-offs
+نیاز به Migration
+تغییرات معماری در آینده
+Alternatives Considered
+Alternative 1: Big Bang Architecture
+
+رد شد زیرا ریسک بسیار بالایی دارد.
+
+Alternative 2: Monolith Forever
+
+رد شد زیرا پاسخگوی رشد سیستم نیست.
+
+C4 پیشنهادی
+
+نمودارهای موجود در ریپازیتوری کیفیت معماری خوبی ندارند چون:
+
+Event Bus وجود ندارد.
+Saga وجود ندارد.
+Multi Region وجود ندارد.
+Privacy Boundary وجود ندارد.
+CDN و Edge Layer کامل نیستند.
+
+برای تولید C4 حرفه‌ای (Context + Container + Component + Dynamic) به صورت عکس PNG باید تصویر را بسازم. در این گفتگو امکان تولید مستقیم تصویر ندارم مگر اینکه وارد حساب کاربری شده باشی و از قابلیت تولید تصویر استفاده کنی. در آن صورت می‌توانم برای همین Amazon چهار نمودار C4 حرفه‌ای (سطح Enterprise) تولید کنم:
+
+System Context
+Container
+Component (Order + Inventory Saga)
+Dynamic Flow (Checkout Process)
